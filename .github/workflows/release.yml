@@ -1,0 +1,44 @@
+name: release
+# v0.1.0 처럼 태그를 올리면 윈도우에서 시험 → exe 빌드 → setup.exe 를 Releases 에 올린다.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: 패키지 설치
+        run: pip install -r requirements.txt pyinstaller==6.18.0 pytest
+      - name: 시험
+        run: python -m pytest tests -q
+      - name: exe 빌드
+        run: python -m PyInstaller --noconfirm --distpath build/dist --workpath build/work build/govlogin.spec
+      - name: Inno Setup 설치
+        run: choco install innosetup -y --no-progress
+      - name: setup.exe 빌드
+        shell: bash
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          [[ "$GITHUB_REF_TYPE" == "tag" ]] || VER="0.0.0-dev"
+          "/c/Program Files (x86)/Inno Setup 6/ISCC.exe" "//DAppVer=$VER" build/installer.iss
+      - name: Release 올리기
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" build/out/*.exe --title "$GITHUB_REF_NAME" --generate-notes
+      - name: 산출물 보관(수동 실행)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup
+          path: build/out/*.exe

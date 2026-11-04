@@ -1,0 +1,24 @@
+# 외부 배포 기준 — 핵심 코드만 추적한다. 사무소 계정·실측·사업장 작업 스크립트는 올리지 않는다
+*
+!.gitignore
+!gov_login.py
+!launcher.py
+!launcher.html
+!launcher.ico
+!make_icon.py
+!login_state.py
+!config.example.json
+!README.md
+!accounts.py
+!list_certs.py
+!secret_store.py
+!tests/
+!tests/test_setup.py
+!build/
+!build/govlogin.spec
+!build/installer.iss
+!requirements.txt
+!LICENSE
+!.github/
+!.github/workflows/
+!.github/workflows/release.yml

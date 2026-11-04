@@ -1,0 +1,4 @@
+playwright==1.62.0
+pywebview==6.2.1
+pywin32==311
+cryptography==46.0.4

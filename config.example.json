@@ -1,0 +1,5 @@
+{
+  "comwel": {"label": "근로복지공단 토탈서비스", "kind": "사무대행", "bizno": "000-00-00000", "cert_cn": "인증서 CN", "account_hint": "계정명 일부"},
+  "nps": {"label": "국민연금 EDI", "mng_no": "00000000000", "cert_cn": "인증서 CN"},
+  "nhis": {"label": "건강보험 EDI", "cert_cn": "인증서 CN"}
+}

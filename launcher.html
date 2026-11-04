@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공단 로그인</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" media="print" onload="this.media='all'">
+<style>
+:root{
+  --desk:#E9EBEF; --ink:#141A24; --mute:#677083; --line:#D8DCE3;
+  --case-a:#DADDE3; --case-b:#C4C9D1; --plate:#B4BAC4;
+  --cap:#FFFFFF; --cap-b:#F1F3F6; --cap-side:#CDD2DA;
+  --mod:#2F4BD8; --mod-side:#2238A8;
+  --on:#2BC274; --busy:#F2AE2E; --off:#9AA2AF;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--desk);font-family:"Pretendard Variable",Pretendard,"Malgun Gothic",system-ui,sans-serif;color:var(--ink);
+  display:grid;grid-template-rows:52px 1fr;font-feature-settings:"tnum"}
+
+/* 제목줄 — 창 끌기 영역 */
+.bar{display:flex;align-items:center;gap:14px;padding:0 10px 0 22px;border-bottom:1px solid var(--line);background:#F4F5F8}
+.bar h1{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.count{font-size:13px;color:var(--mute)}
+.count b{color:var(--ink);font-weight:700}
+.spacer{flex:1;align-self:stretch}
+.win{all:unset;width:34px;height:30px;display:grid;place-items:center;border-radius:8px;color:#4B5465;cursor:pointer}
+.win:hover{background:#E3E6EC}.win.x:hover{background:#E5484D;color:#fff}
+.win:focus-visible{outline:2px solid var(--mod)}
+
+main{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:22px;padding:26px 26px 22px;min-height:0}
+
+/* 키보드 본체 */
+.deck{align-self:center;min-width:0;background:linear-gradient(180deg,var(--case-a),var(--case-b));border-radius:26px;padding:16px 18px 18px;
+  box-shadow:0 28px 50px -30px rgba(25,32,48,.6),inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.08)}
+.engrave{font-size:12px;font-weight:600;color:#5E6676;text-shadow:0 1px 0 rgba(255,255,255,.65)}
+.cols{display:grid;grid-template-columns:64px repeat(var(--n),1fr);gap:12px;padding:0 10px 8px}
+.cols span{padding-left:4px}
+.plate{background:var(--plate);border-radius:16px;padding:12px 10px;box-shadow:inset 0 2px 6px rgba(0,0,0,.18)}
+.row{display:grid;grid-template-columns:64px repeat(var(--n),1fr);gap:12px;align-items:stretch}
+.gap{aspect-ratio:1/0.92}
+.key.soon{cursor:default}
+.key.soon .cap{background:repeating-linear-gradient(135deg,#F4F5F7 0 8px,#EEF0F3 8px 16px)}
+.key.soon .name{color:#7D8595}
+.key.soon:active{padding-bottom:8px;transform:none}
+.key.picked .cap{outline:3px solid var(--mod);outline-offset:-3px}
+.allbtn{all:unset;cursor:pointer;font-size:13px;font-weight:650;color:#fff;background:var(--mod);border-radius:8px;padding:6px 12px}
+.allbtn:hover{background:#3A57E6}.allbtn:focus-visible{outline:2px solid #8EA6FF;outline-offset:2px}
+.row+.row{margin-top:12px}
+.rowname{display:flex;align-items:center;justify-content:flex-end;padding-right:4px;writing-mode:horizontal-tb}
+
+.key{all:unset;position:relative;aspect-ratio:1/0.92;min-width:0;border-radius:14px;background:var(--cap-side);padding-bottom:8px;cursor:pointer;
+  transition:padding-bottom .07s ease, transform .07s ease}
+.key::after{content:"";position:absolute;left:10%;right:10%;bottom:-6px;height:14px;border-radius:50%;filter:blur(9px);opacity:0;transition:opacity .4s}
+.key.on::after{background:var(--on);opacity:.85}
+.key.busy::after{background:var(--busy);opacity:.7;animation:pulse 1.4s ease-in-out infinite}
+.cap{position:relative;z-index:1;height:100%;border-radius:12px;background:linear-gradient(180deg,var(--cap),var(--cap-b));
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.04),inset 0 1px 0 #fff;padding:12px 13px 11px;display:flex;flex-direction:column}
+.emo{font-size:30px;line-height:1;font-family:"Segoe UI Emoji","Apple Color Emoji",sans-serif}
+.num{position:absolute;top:10px;right:12px;font-size:12px;font-weight:600;color:#A0A7B4}
+.name{white-space:nowrap;font-size:clamp(15px,1.75vw,22px);font-weight:750;letter-spacing:-.02em;line-height:1.15;margin-top:auto}
+.stat{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--mute);min-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.led{width:8px;height:8px;border-radius:50%;background:var(--off);flex:none}
+.on .led{background:var(--on)} .busy .led{background:var(--busy)}
+.on .stat{color:#167A47;font-weight:600}
+.key:hover .cap{background:linear-gradient(180deg,#fff,#F7F8FA)}
+.key:active,.key.pressed{padding-bottom:2px;transform:translateY(6px)}
+.key:focus-visible .cap{outline:3px solid #8EA6FF;outline-offset:2px}
+
+.key.mod{background:var(--mod-side)}
+.key.mod .cap{background:linear-gradient(180deg,#4562EE,var(--mod));box-shadow:inset 0 1px 0 rgba(255,255,255,.25);color:#fff}
+.key.mod:hover .cap{background:linear-gradient(180deg,#5370F2,#3651DE)}
+.key.mod .name{font-size:17px;font-weight:700}
+.key.mod .stat{color:#C9D3FF}
+.key.mod .num{color:#AFC0FF}
+
+/* 오른쪽 기록 */
+aside{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 18px 14px;display:flex;flex-direction:column;min-height:0}
+aside h2{margin:0 0 4px;font-size:14px;font-weight:700}
+.hint{margin:0 0 14px;font-size:12.5px;line-height:1.55;color:var(--mute)}
+.meter{display:flex;gap:4px;margin-bottom:16px}
+.meter i{flex:1;height:6px;border-radius:3px;background:#E6E9EE}
+.meter i.on{background:var(--on)} .meter i.busy{background:var(--busy)}
+ol{list-style:none;margin:0;padding:0;overflow:auto;border-top:1px solid #EEF0F3}
+li{display:grid;grid-template-columns:42px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #F1F2F5;font-size:13px;line-height:1.4}
+li time{color:#9AA1AD}
+.empty{display:block;padding:16px 0;font-size:13px;color:var(--mute)}
+.keys-help{margin-top:auto;padding-top:12px;font-size:12px;color:#8A92A0}
+kbd{font:inherit;font-weight:600;background:#F1F3F6;border:1px solid #DDE1E7;border-bottom-width:2px;border-radius:5px;padding:0 5px;color:#4B5465}
+
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,8px);background:var(--ink);color:#fff;font-size:13.5px;
+  padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .18s,transform .18s;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+/* 설정 */
+.setbtn{all:unset;cursor:pointer;font-size:13px;font-weight:600;color:#3A4352;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 11px}
+.setbtn:hover{background:#F1F3F6}.setbtn:focus-visible{outline:2px solid var(--mod)}
+.veil{position:fixed;inset:52px 0 0 0;background:rgba(20,26,36,.28);display:none;z-index:50}
+.veil.open{display:block}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:min(560px,100%);background:#fff;border-left:1px solid var(--line);
+  display:grid;grid-template-rows:auto auto 1fr auto;box-shadow:-20px 0 40px -30px rgba(20,26,36,.5)}
+.dhead{padding:18px 22px 6px}
+.dhead h2{margin:0;font-size:16px}
+.dhead p{margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--mute)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 22px 12px;border-bottom:1px solid #EEF0F3}
+.tab{all:unset;cursor:pointer;font-size:13px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);color:#3A4352}
+.tab.cur{background:var(--ink);border-color:var(--ink);color:#fff}
+.tab.add{border-style:dashed;color:var(--mod)}
+.tab:focus-visible{outline:2px solid var(--mod);outline-offset:2px}
+.form{overflow:auto;padding:16px 22px 10px}
+.fld{display:grid;gap:5px;margin-bottom:14px}
+.fld>span{font-size:12.5px;font-weight:650;color:#3A4352}
+.fld small{font-size:12px;color:var(--mute);line-height:1.45}
+.form input[type=text],.form input[type=password],.form select{font:inherit;font-size:14px;padding:8px 10px;border:1px solid #CBD1DA;border-radius:8px;background:#fff;color:var(--ink);width:100%}
+.form input:focus,.form select:focus{outline:2px solid #8EA6FF;outline-offset:0;border-color:#8EA6FF}
+.linkbtn{all:unset;cursor:pointer;font-size:12.5px;color:var(--mod);font-weight:600}
+.linkbtn:focus-visible{outline:2px solid var(--mod)}
+.site{border:1px solid #E3E6EC;border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.site>label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;cursor:pointer}
+.site>label input{width:16px;height:16px;accent-color:var(--mod)}
+.site .body{margin-top:12px;display:none}
+.site.on .body{display:block}
+.site.soon{opacity:.55}
+.saved{font-size:12px;color:#167A47;font-weight:600}
+.dfoot{display:flex;gap:8px;align-items:center;padding:12px 22px;border-top:1px solid #EEF0F3}
+.dfoot .msg{flex:1;font-size:12.5px;color:#B42318}
+.dfoot .msg.ok{color:#167A47}
+.btn{all:unset;cursor:pointer;font-size:13.5px;font-weight:650;border-radius:8px;padding:8px 14px}
+.btn.pri{background:var(--mod);color:#fff}.btn.pri:hover{background:#3A57E6}
+.btn.ghost{color:#3A4352;border:1px solid var(--line)}.btn.ghost:hover{background:#F1F3F6}
+.btn.del{color:#B42318}.btn.del:hover{background:#FDECEC}
+.btn:focus-visible{outline:2px solid #8EA6FF;outline-offset:2px}
+.welcome{display:none;place-items:center;text-align:center;gap:14px;align-self:center}
+.welcome.show{display:grid}
+.welcome h2{margin:0;font-size:20px}
+.welcome p{margin:0;color:var(--mute);font-size:14px;line-height:1.6}
+@keyframes pulse{50%{opacity:.25}}
+@media (max-width:900px){main{grid-template-columns:1fr}aside{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="bar pywebview-drag-region">
+  <h1>공단 로그인</h1>
+  <span class="count" id="count"></span>
+  <span class="spacer pywebview-drag-region"></span>
+  <button class="setbtn" id="setbtn">설정</button>
+  <button class="allbtn" id="allbtn">전체 열기 <span style="opacity:.75">0</span></button>
+  <button class="win" aria-label="최소화" onclick="api('minimize')"><svg width="12" height="12"><path d="M1 6h10" stroke="currentColor" stroke-width="1.6"/></svg></button>
+  <button class="win x" aria-label="닫기" onclick="api('close')"><svg width="12" height="12"><path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.6"/></svg></button>
+</header>
+<main>
+  <section class="welcome" id="welcome">
+    <h2>처음 오셨네요</h2>
+    <p>인증서를 고르고 비밀번호를 한 번 넣어 두면<br>다음부터는 키 하나로 공단에 로그인합니다.</p>
+    <div><button class="btn pri" onclick="openSetup()">계정 등록하기</button></div>
+  </section>
+  <section class="deck" aria-label="로그인 키">
+    <div class="cols engrave" id="cols"></div>
+    <div class="plate" id="plate"></div>
+  </section>
+  <aside>
+    <h2>지금 상태</h2>
+    <p class="hint">키를 누르면 그 계정 전용 크롬 창이 열립니다. 창마다 따로 로그인되므로 서로 끊지 않습니다.</p>
+    <div class="meter" id="meter"></div>
+    <ol id="log"></ol>
+    <div class="keys-help">숫자 키로 누를 수 있습니다. 여러 숫자를 잇달아 누르면(예 <kbd>1</kbd><kbd>4</kbd>) 함께 열리고, <kbd>0</kbd> 은 전체입니다.</div>
+  </aside>
+</main>
+<div class="veil" id="veil">
+  <section class="drawer" role="dialog" aria-modal="true" aria-labelledby="dtitle">
+    <div class="dhead">
+      <h2 id="dtitle">계정 설정</h2>
+      <p>비밀번호와 주민등록번호는 이 PC의 윈도우 보안 저장소에만 잠가 둡니다. 다른 PC나 서버로는 나가지 않습니다.</p>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <form class="form" id="form" autocomplete="off" onsubmit="return false"></form>
+    <div class="dfoot">
+      <span class="msg" id="fmsg" role="status"></span>
+      <button class="btn del" id="fdel" type="button">계정 삭제</button>
+      <button class="btn ghost" type="button" onclick="closeSetup()">닫기</button>
+      <button class="btn pri" type="button" id="fsave">저장</button>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+let NUM={};  // 숫자 → 키 id (준비된 키만, 계정 순서대로 1부터)
+const plate=document.getElementById("plate"),toastEl=document.getElementById("toast");
+let S=null,last="",tt;
+function api(n,...a){return window.pywebview?window.pywebview.api[n](...a):Promise.reject()}
+function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove("show"),2600)}
+function build(){
+  plate.innerHTML="";NUM={};let n=0;
+  document.querySelector(".deck").style.setProperty("--n",S.cols.length+1);
+  document.getElementById("cols").innerHTML="<span></span>"+S.cols.map(c=>`<span>${c.org}</span>`).join("")+"<span>조합</span>";
+  S.rows.forEach(row=>{
+    const r=document.createElement("div");r.className="row";
+    r.innerHTML=`<div class="rowname engrave">${row.label}</div>`;
+    row.cells.forEach(k=>{
+      if(!k){const g=document.createElement("div");g.className="gap";r.append(g);return}
+      const v=S.keys[k],b=document.createElement("button");
+      if(v.ready)NUM[++n]=k;
+      b.className="key "+(v.ready?v.state:"soon");b.dataset.k=k;b.disabled=!v.ready;
+      b.setAttribute("aria-label",`${v.org} ${row.label} 로그인, ${v.ready?v.note:"준비 중"}`);
+      b.innerHTML=`<div class="cap"><span class="emo" aria-hidden="true">${v.emo}</span>${v.ready?`<span class="num">${n}</span>`:""}<div class="name">${v.short}</div>
+        <div class="stat"><span class="led"></span>${v.ready?v.note+(v.state!=="off"&&v.since?` · ${v.since}`:""):"준비 중"}</div></div>`;
+      b.onclick=()=>pressMany([k]);r.append(b)});
+    const ready=row.cells.filter(k=>k&&S.keys[k].ready);
+    const m=document.createElement("button");m.className="key mod";
+    m.setAttribute("aria-label",`${row.label} 계정 모두 열기`);
+    m.innerHTML=`<div class="cap"><span class="emo" aria-hidden="true">⚡</span><div class="name">모두 열기</div><div class="stat">${row.label} ${ready.length}개</div></div>`;
+    m.onclick=()=>pressMany(ready);r.append(m);
+    plate.append(r)});
+  const ks=Object.values(S.keys).filter(v=>v.ready),on=ks.filter(v=>v.state==="on").length;
+  document.getElementById("count").innerHTML=`로그인 <b>${on}</b> / ${ks.length}`;
+  document.getElementById("meter").innerHTML=ks.map(v=>`<i class="${v.state}"></i>`).join("");
+  document.getElementById("log").innerHTML=S.log.length?S.log.map(l=>`<li><time>${l.t}</time><span>${l.msg}</span></li>`).join("")
+    :'<li class="empty">아직 기록이 없습니다. 키를 눌러 로그인을 시작하세요.</li>';
+}
+async function pressMany(ks){
+  ks.forEach(k=>{const b=plate.querySelector(`[data-k="${k}"]`);if(b){b.classList.add("pressed");setTimeout(()=>b.classList.remove("pressed"),130)}});
+  try{toast(ks.length===1?`${S.keys[ks[0]].org} ${S.keys[ks[0]].acct}: `+await api("launch",ks[0]):await api("launch_many",ks))}
+  catch(e){toast("프로그램과 연결되지 않았습니다. 창을 닫고 다시 실행하세요.")}
+  refresh();
+}
+async function refresh(){try{S=await api("state");const j=JSON.stringify(S);if(j!==last){last=j;build()}}catch(e){}}
+// 키 조합 — 숫자를 0.6초 안에 잇달아 누르면 한 묶음으로 연다. 0 = 전체
+let chord=[],ct;
+document.addEventListener("keydown",e=>{
+  if(e.repeat||!S||veil.classList.contains("open")||/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))return;
+  if(e.key==="0"){pressMany(Object.values(NUM));return}
+  const k=NUM[e.key];if(!k)return;
+  if(!chord.includes(k))chord.push(k);
+  const b=plate.querySelector(`[data-k="${k}"]`);if(b)b.classList.add("picked");
+  clearTimeout(ct);ct=setTimeout(()=>{const ks=chord;chord=[];plate.querySelectorAll(".picked").forEach(x=>x.classList.remove("picked"));pressMany(ks)},600);
+});
+document.getElementById("allbtn").onclick=()=>S&&pressMany(Object.values(NUM));
+
+// ── 설정 ── 비밀값은 저장 버튼을 누를 때만 프로그램에 넘기고, 넘긴 뒤 칸을 비운다(화면·기록에 남기지 않는다)
+const veil=document.getElementById("veil"),form=document.getElementById("form"),fmsg=document.getElementById("fmsg");
+let V=null,cur=null,firstShown=false;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function msg(t,ok){fmsg.textContent=t||"";fmsg.className="msg"+(ok?" ok":"")}
+async function openSetup(){try{V=await api("setup_get")}catch(e){toast("프로그램과 연결되지 않았습니다.");return}
+  cur=V.accounts.length?V.accounts[0].id:null;veil.classList.add("open");drawSetup();}
+function closeSetup(){veil.classList.remove("open");form.innerHTML="";refresh()}
+function drawSetup(){
+  document.getElementById("tabs").innerHTML=V.accounts.map(a=>`<button type="button" class="tab${a.id===cur?" cur":""}" data-a="${esc(a.id)}">${esc(a.label)}</button>`).join("")
+    +`<button type="button" class="tab add${cur===null?" cur":""}" data-a="">+ 계정 추가</button>`;
+  document.querySelectorAll("#tabs .tab").forEach(b=>b.onclick=()=>{cur=b.dataset.a||null;msg("");drawSetup()});
+  const a=V.accounts.find(x=>x.id===cur)||{label:"",cert_cn:"",cert_pw_saved:false,sites:{}};
+  document.getElementById("fdel").style.display=cur?"":"none";
+  const certOpts=V.certs.length?V.certs.map(c=>`<option value="${esc(c.cn)}"${c.cn===a.cert_cn?" selected":""}>${esc(c.cn)} · ${esc(c.issuer)} · ${esc(c.not_after)}까지</option>`).join("")
+    :"";
+  const st=V.sites,has=id=>id in a.sites,cw=a.sites.comwel||{},np=a.sites.nps||{};
+  const mode=cw.mode||"사무대행";
+  form.innerHTML=`
+  <label class="fld"><span>계정 이름</span><input type="text" name="label" value="${esc(a.label)}" placeholder="예: 우리 사무소, 대리인1" maxlength="20"></label>
+  <div class="fld"><span>인증서</span>
+    ${V.certs.length?`<select name="cert_cn"><option value="">인증서를 고르세요</option>${certOpts}</select>`
+      :`<small>이 PC의 기본 위치에서 인증서를 찾지 못했습니다. 인증서가 USB나 다른 폴더에 있으면 아래에서 폴더를 지정하세요.</small>`}
+    <small>${V.dirs.length?"추가로 찾는 폴더: "+V.dirs.map(esc).join(", ")+" · ":""}<button type="button" class="linkbtn" id="adddir">인증서 폴더 지정</button></small></div>
+  <label class="fld"><span>인증서 비밀번호</span><input type="password" name="cert_pw" autocomplete="new-password" placeholder="${a.cert_pw_saved?"저장돼 있습니다 — 바꿀 때만 입력":"인증서 비밀번호"}">
+    ${a.cert_pw_saved?'<small class="saved">✓ 저장됨</small>':""}</label>
+  <div class="fld"><span>쓸 사이트</span></div>
+  ${st.map(s=>{const on=has(s.id);let body="";
+    if(s.id==="comwel")body=`
+      <label class="fld"><span>로그인 방식</span><select name="cw_mode">
+        ${["사무대행","사업장","의료기관"].map(k=>`<option value="${k}"${mode===k?" selected":""}>사업자 탭 · ${k}</option>`).join("")}
+        <option value="personal"${mode==="personal"?" selected":""}>개인 탭 · 대표자/소속직원(주민번호)</option></select></label>
+      <label class="fld cw-biz"><span>사업자등록번호</span><input type="text" name="cw_bizno" inputmode="numeric" value="${esc(cw.bizno)}" placeholder="000-00-00000"></label>
+      <label class="fld cw-rrn"><span>주민등록번호</span><input type="password" name="cw_rrn" inputmode="numeric" autocomplete="off" placeholder="${cw.rrn_saved?"저장돼 있습니다 — 바꿀 때만 입력":"13자리 (비워 두면 로그인 때 직접 입력)"}">
+        ${cw.rrn_saved?'<small class="saved">✓ 저장됨</small>':""}</label>
+      <label class="fld"><span>로그인 계정 확인(선택)</span><input type="text" name="cw_hint" value="${esc(cw.account_hint)}" placeholder="화면에 뜨는 계정명 일부">
+        <small>적어 두면 다른 계정으로 로그인돼 있을 때 로그아웃하고 다시 들어갑니다.</small></label>`;
+    else if(s.id==="nps")body=`
+      <label class="fld"><span>사업장관리번호</span><input type="text" name="np_mng" inputmode="numeric" value="${esc(np.mng_no)}" placeholder="11자리"></label>
+      <label class="fld"><span>EDI 사업장 비밀번호(선택)</span><input type="password" name="np_pw" autocomplete="new-password" placeholder="${np.sitepw_saved?"저장돼 있습니다 — 바꿀 때만 입력":"인증서 비밀번호와 다른 비밀번호"}">
+        ${np.sitepw_saved?'<small class="saved">✓ 저장됨</small>':""}</label>`;
+    else if(s.id==="nhis")body=`<small>인증서만 있으면 됩니다.</small>`;
+    return `<div class="site${on?" on":""}${s.ready?"":" soon"}" data-s="${s.id}"><label><input type="checkbox" name="site_${s.id}"${on?" checked":""}>${esc(s.org)} ${esc(s.short)}${s.ready?"":" (준비 중)"}</label>
+      ${body?`<div class="body">${body}</div>`:""}</div>`}).join("")}`;
+  form.querySelectorAll(".site input[type=checkbox]").forEach(c=>c.onchange=()=>c.closest(".site").classList.toggle("on",c.checked));
+  const sync=()=>{const p=form.cw_mode&&form.cw_mode.value==="personal";form.querySelectorAll(".cw-biz").forEach(e=>e.style.display=p?"none":"");
+    form.querySelectorAll(".cw-rrn").forEach(e=>e.style.display=p?"":"none")};
+  if(form.cw_mode){form.cw_mode.onchange=sync;sync()}
+  const ad=document.getElementById("adddir");if(ad)ad.onclick=async()=>{V=await api("add_cert_dir");drawSetup()};
+  (form.label.value?null:form.label)?.focus();
+}
+document.getElementById("fsave").onclick=async()=>{
+  const f=form,sites={};
+  V.sites.forEach(s=>{if(f["site_"+s.id]&&f["site_"+s.id].checked)sites[s.id]={}});
+  if(sites.comwel)sites.comwel={mode:f.cw_mode.value,bizno:f.cw_bizno.value,account_hint:f.cw_hint.value};
+  if(sites.nps)sites.nps={mng_no:f.np_mng.value};
+  const secrets={cert_pw:f.cert_pw.value,rrn:sites.comwel&&f.cw_mode.value==="personal"?f.cw_rrn.value:"",sitepw:sites.nps?f.np_pw.value:""};
+  const body={id:cur,label:f.label.value,cert_cn:f.cert_cn?f.cert_cn.value:"",sites,secrets};
+  msg("저장하는 중…",true);
+  let r;try{r=await api("setup_save",body)}catch(e){r={ok:false,msg:"프로그램과 연결되지 않았습니다."}}
+  finally{["cert_pw","cw_rrn","np_pw"].forEach(n=>{if(f[n])f[n].value=""});secrets.cert_pw=secrets.rrn=secrets.sitepw=""}
+  if(!r.ok){msg(r.msg);return}
+  V=r.view;cur=V.accounts.find(a=>a.label===body.label.trim())?.id??V.accounts.at(-1)?.id??null;drawSetup();msg(r.msg,true);refresh();
+};
+document.getElementById("fdel").onclick=async()=>{
+  const a=V.accounts.find(x=>x.id===cur);if(!a)return;
+  const b=document.getElementById("fdel");
+  if(b.dataset.arm!=="1"){b.dataset.arm="1";b.textContent="한 번 더 누르면 삭제";setTimeout(()=>{b.dataset.arm="";b.textContent="계정 삭제"},3000);return}
+  b.dataset.arm="";b.textContent="계정 삭제";
+  V=await api("setup_delete",cur);cur=V.accounts[0]?.id??null;drawSetup();msg(`${a.label} 계정을 지웠습니다.`,true);refresh();
+};
+document.getElementById("setbtn").onclick=openSetup;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&veil.classList.contains("open"))closeSetup()});
+function welcome(){const need=S&&S.needs_setup;document.getElementById("welcome").classList.toggle("show",!!need);
+  document.querySelector(".deck").style.display=need?"none":"";
+  if(need&&!firstShown){firstShown=true;openSetup()}}
+window.addEventListener("pywebviewready",()=>{refresh().then(welcome);setInterval(()=>refresh().then(welcome),2500)});
+</script>
+</body>
+</html>
