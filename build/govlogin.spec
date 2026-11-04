@@ -12,7 +12,8 @@ a = Analysis(
     pathex=[ROOT],
     datas=[(ROOT + "/launcher.html", "."), (ROOT + "/launcher.ico", ".")] + pw_datas,
     binaries=pw_bins,
-    hiddenimports=["gov_login", "login_state", "accounts", "list_certs", "secret_store", "win32crypt"] + pw_hidden,
+    hiddenimports=["gov_login", "login_state", "accounts", "list_certs", "secret_store", "win32crypt",
+                   "logkeep", "version", "win32com.client"] + pw_hidden,
     excludes=["tkinter", "matplotlib", "numpy", "pandas", "PIL", "pytest"],
 )
 pyz = PYZ(a.pure)

@@ -12,8 +12,12 @@
 !accounts.py
 !list_certs.py
 !secret_store.py
+!logkeep.py
+!version.py
 !tests/
 !tests/test_setup.py
+!tests/test_stale_profile.py
+!tests/test_logkeep_version.py
 !build/
 !build/govlogin.spec
 !build/installer.iss

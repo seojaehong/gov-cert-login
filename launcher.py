@@ -18,7 +18,9 @@ import webview
 
 import accounts
 import list_certs
+import logkeep
 import secret_store
+from version import __version__
 
 FROZEN = getattr(sys, "frozen", False)  # 설치본(PyInstaller exe)
 HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))  # launcher.html 등 동봉 파일
@@ -177,14 +179,21 @@ def _setup_save(form):
     return aid
 
 
+KEEP_LOGS = logkeep.KEEP["run"]  # 키마다 실행 로그를 최근 몇 개 남기나
+
+
+def _new_run_log(k):
+    """실행마다 시각을 붙인 새 로그 파일 경로(보관 규칙은 logkeep.py)."""
+    return logkeep.stamped(OUT, "run", k, "log")
+
+
 def _launch(k):
     v = KEYS[k]
     if not v["ready"]:
         return f"{v['org']} 로그인은 준비 중입니다."
     if _alive(v["port"]):
         return "이미 창이 열려 있습니다."
-    os.makedirs(OUT, exist_ok=True)
-    log = open(os.path.join(OUT, f"run_{k.replace(':', '_')}.log"), "w", encoding="utf-8")
+    log = open(_new_run_log(k), "w", encoding="utf-8")
     PROCS[k] = subprocess.Popen(_cmd("gov_login", "login", k, "--keep"), cwd=OUT,
                                 stdout=log, stderr=subprocess.STDOUT, creationflags=NOWIN)
     with LOCK:
@@ -270,8 +279,10 @@ if __name__ == "__main__":
         guard.bind(("127.0.0.1", 8765))  # 두 번째 실행 방지
     except OSError:
         sys.exit(0)
+    logkeep.purge_old(OUT)  # 30일 지난 실행 기록 정리
+    _log(f"공단 로그인 {__version__} 시작")
     threading.Thread(target=_poll, daemon=True).start()
-    webview.create_window("공단 로그인", os.path.join(HERE, "launcher.html"), js_api=Api(),
+    webview.create_window(f"공단 로그인 {__version__}",os.path.join(HERE, "launcher.html"), js_api=Api(),
                           width=1120, height=700, min_size=(760, 560), frameless=True, easy_drag=False,
                           background_color="#E9EBEF")
     webview.start()

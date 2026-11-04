@@ -20,6 +20,12 @@ jobs:
         run: pip install -r requirements.txt pyinstaller==6.18.0 pytest
       - name: 시험
         run: python -m pytest tests -q
+      - name: 태그 = version.py 확인
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          VER="$(python -c "import version; print(version.__version__)")"
+          [[ "v$VER" == "$GITHUB_REF_NAME" ]] || { echo "태그 $GITHUB_REF_NAME ≠ version.py $VER"; exit 1; }
       - name: exe 빌드
         run: python -m PyInstaller --noconfirm --distpath build/dist --workpath build/work build/govlogin.spec
       - name: Inno Setup 설치

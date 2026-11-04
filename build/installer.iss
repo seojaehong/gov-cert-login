@@ -5,7 +5,7 @@
 ; 계정 설정·저장 암호는 %LOCALAPPDATA%\gov-cert-login 에 있어 재설치·업데이트·제거해도 남는다.
 
 #ifndef AppVer
-  #define AppVer "0.1.0"
+  #define AppVer "0.1.1"
 #endif
 
 [Setup]

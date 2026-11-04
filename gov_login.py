@@ -20,8 +20,10 @@ import time
 from playwright.sync_api import sync_playwright
 
 import accounts
+import logkeep
 import secret_store
 from list_certs import certs
+from version import __version__
 
 if sys.stdout:  # 설치본(창 없는 exe)에서 출력처가 없을 수 있다
     sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
@@ -461,6 +463,55 @@ def _port_alive(port):
         return False
 
 
+def _norm_path(s):
+    return s.replace("/", "\\").rstrip("\\").lower()
+
+
+def _profile_pids(profile, procs):
+    """(pid, 명령줄) 목록에서 이 계정 전용 프로필(--user-data-dir)을 잡은 프로세스만 고른다.
+    다른 계정 프로필(…-nhis1)이나 사용자 크롬은 고르지 않는다."""
+    want = _norm_path(profile)
+    out = []
+    for pid, cmd in procs:
+        if not cmd:
+            continue
+        m = re.search(r'--user-data-dir=(?:"([^"]+)"|(\S+))', cmd)
+        if m and _norm_path(m.group(1) or m.group(2)) == want:
+            out.append(pid)
+    return out
+
+
+def _chrome_procs():
+    """실행 중인 chrome.exe 의 (pid, 명령줄). 못 읽으면 빈 목록."""
+    try:
+        import win32com.client
+        wmi = win32com.client.GetObject("winmgmts:")
+        return [(int(p.ProcessId), p.CommandLine) for p in
+                wmi.ExecQuery("SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name='chrome.exe'")]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _clear_stale_profile(profile, port):
+    """창은 닫혔는데 그 프로필을 잡은 크롬이 남아 있으면 새 창이 「기존 브라우저 세션에서 여는 중」으로
+    바로 꺼진다(261104 건보 대리인1 실측 — 포트 없음, 다시 누르면 됨). 포트가 죽어 있을 때만 정리한다."""
+    if _port_alive(port):
+        return 0
+    pids = _profile_pids(profile, _chrome_procs())
+    if not pids:
+        return 0
+    import subprocess
+    for pid in pids:
+        subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True,
+                       creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    for _ in range(10):  # 프로필 잠금이 풀릴 때까지 최대 5초
+        if not _profile_pids(profile, _chrome_procs()):
+            break
+        time.sleep(0.5)
+    print(f"남아 있던 크롬 {len(pids)}개를 정리했습니다(프로필 {os.path.basename(profile)}).")
+    return len(pids)
+
+
 def _resolve(target):
     """target = accounts.json 키 id("계정:사이트") → (사이트, 사이트설정, 프로필, 포트, 파일 꼬리표)."""
     import accounts
@@ -475,11 +526,21 @@ def login(target, cert_idx, keep, dry=False):
     site, site_cfg, profile, port, tag = _resolve(target)
     cert = _pick_cert(site_cfg, cert_idx)
     pw = None if dry else _secret(cert["cn"])
+    print(time.strftime("%Y-%m-%d %H:%M:%S"), f"공단 로그인 {__version__}", "시작", target, "포트", port)
+    _clear_stale_profile(profile, port)
     with sync_playwright() as p:
-        ctx = p.chromium.launch_persistent_context(profile, channel="chrome", headless=False,
-                                                   viewport={"width": 1400, "height": 900},
-                                                   args=["--remote-debugging-port=" + port]  # 로그인 뒤 다른 스크립트가 connect_over_cdp 로 붙는다
-                                                   + (["--disable-features=LocalNetworkAccessChecks"] if site == "nhis" else []))  # 건보 보안모듈 데몬 접속 허용(261103)
+        def _open():
+            return p.chromium.launch_persistent_context(profile, channel="chrome", headless=False,
+                                                        viewport={"width": 1400, "height": 900},
+                                                        args=["--remote-debugging-port=" + port]  # 로그인 뒤 다른 스크립트가 connect_over_cdp 로 붙는다
+                                                        + (["--disable-features=LocalNetworkAccessChecks"] if site == "nhis" else []))  # 건보 보안모듈 데몬 접속 허용(261103)
+        try:
+            ctx = _open()
+        except Exception as e:  # noqa: BLE001 — 남은 크롬이 프로필을 쥐고 있던 경우 한 번만 다시 연다
+            print("창 열기 실패 — 남은 크롬을 정리하고 한 번 더 엽니다:", type(e).__name__, str(e).splitlines()[0][:200])
+            _clear_stale_profile(profile, port)
+            time.sleep(2)
+            ctx = _open()
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
         msgs = []
         # 「키보드보안 설치·적용」 권유 확인창은 취소(설치·다운로드로 빠지지 않게), 나머지는 확인
@@ -491,12 +552,12 @@ def login(target, cert_idx, keep, dry=False):
             ok = False
             msgs.append("예외: " + type(e).__name__ + " " + str(e)[:300])
             try:
-                page.screenshot(path=os.path.join(_logs(), f"fail_{tag}.png"))
+                page.screenshot(path=logkeep.stamped(_logs(), "fail", tag, "png"))
             except Exception:  # noqa: BLE001
                 pass
         pw = None
         with open(os.path.join(_logs(), f"last_{tag}.txt"), "w", encoding="utf-8") as f:
-            f.write(("로그인 성공" if ok else "로그인 실패") + " | " + " / ".join(msgs[-4:]) + "\n")
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + ("로그인 성공" if ok else "로그인 실패") + " | " + " / ".join(msgs[-4:]) + "\n")
         print("로그인 성공" if ok else "로그인 실패", "| 알림:", msgs[-3:])
         if keep:  # 실패해도 창을 남겨 사용자가 직접 마무리할 수 있게
             print("브라우저를 열어 둡니다. 끝내려면 창을 닫으세요.")
