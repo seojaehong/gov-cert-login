@@ -367,7 +367,11 @@ def _fill_ksbiz(page, fr, cert, pw):
         _type_pw(page, "#pop_cert", pw, fr)
         fr.locator("#pop_cert").locator("xpath=ancestor::*[.//a[contains(@class,'btn_org')]][1]").locator("a.btn_org").first.click()
         time.sleep(3)
-        if not fr.locator("#certpwd").is_visible():  # 저장과 함께 바로 서명·로그인된 경우
+        # 저장과 함께 바로 서명·로그인되면 KSBiz 프레임이 닫혀 is_visible 이 「Frame was detached」를 던진다(261107 실측)
+        try:
+            if fr.is_detached() or not fr.locator("#certpwd").is_visible():
+                return
+        except Exception:  # noqa: BLE001
             return
         row = fr.locator("tr").filter(has_text=cert["cn"][:10])
     if row.count():
