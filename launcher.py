@@ -7,7 +7,6 @@
 """
 import json
 import os
-import socket
 import subprocess
 import sys
 import threading
@@ -261,6 +260,46 @@ class Api:
         webview.windows[0].destroy()
 
 
+_MUTEX = None  # 프로세스가 살아 있는 동안 쥐고 있는다(종료되면 OS 가 자동으로 푼다)
+
+
+def _single_instance():
+    """두 번째 실행 방지 — 포트가 아니라 이름 있는 뮤텍스로 판정한다.
+
+    예전에는 127.0.0.1:8765 를 bind 해서 막았는데, 다른 개발 서버가 그 포트를 쓰면
+    런처가 아무 말 없이 꺼졌다(261111). 이미 떠 있으면 그 창을 앞으로 가져오고,
+    창을 못 찾으면 안내창을 띄운다."""
+    global _MUTEX
+    import ctypes
+    k32, u32 = ctypes.windll.kernel32, ctypes.windll.user32
+    k32.CreateMutexW.restype = ctypes.c_void_p
+    _MUTEX = k32.CreateMutexW(None, False, "Local\\gov-cert-login-launcher")
+    if k32.GetLastError() != 183:  # ERROR_ALREADY_EXISTS 가 아니면 첫 실행
+        return True
+    found = []
+    proc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+
+    def _each(hwnd, _):
+        n = u32.GetWindowTextLengthW(hwnd)
+        if n:
+            buf = ctypes.create_unicode_buffer(n + 1)
+            u32.GetWindowTextW(hwnd, buf, n + 1)
+            if buf.value.startswith("공단 로그인"):
+                found.append(hwnd)
+                return False
+        return True
+
+    u32.EnumWindows(proc(_each), 0)
+    if found:
+        u32.ShowWindow(ctypes.c_void_p(found[0]), 9)  # SW_RESTORE
+        u32.SetForegroundWindow(ctypes.c_void_p(found[0]))
+    else:
+        u32.MessageBoxW(None, "공단 로그인이 이미 실행 중인데 창을 찾지 못했습니다.\n"
+                        "작업 관리자에서 남은 「공단 로그인」(pythonw) 을 끝낸 뒤 다시 실행해 주세요.",
+                        "공단 로그인", 0x40)
+    return False
+
+
 def _run_script(name, args):
     """설치본 전용 — exe --run gov_login login … 처럼 동봉 스크립트를 그 자리에서 실행한다."""
     import runpy
@@ -274,10 +313,7 @@ if __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "--run":
         _run_script(sys.argv[2], sys.argv[3:])
         sys.exit(0)
-    guard = socket.socket()
-    try:
-        guard.bind(("127.0.0.1", 8765))  # 두 번째 실행 방지
-    except OSError:
+    if not _single_instance():
         sys.exit(0)
     logkeep.purge_old(OUT)  # 30일 지난 실행 기록 정리
     _log(f"공단 로그인 {__version__} 시작")
