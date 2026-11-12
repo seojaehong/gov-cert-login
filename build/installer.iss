@@ -1,11 +1,12 @@
 ; 공단 로그인 설치 파일 — Inno Setup 6
-;   빌드: ISCC build\installer.iss   (먼저 PyInstaller 로 build\dist\GovLogin 을 만든다)
+;   빌드: ISCC /DAppVer=<version.py 의 버전> build\installer.iss   (먼저 PyInstaller 로 build\dist\GovLogin 을 만든다)
+;         버전은 version.py 한 곳에서만 정한다 — 여기 숫자를 적지 않는다. 로컬은 README 의 명령, CI 는 태그 값을 넘긴다.
 ;   결과: build\out\GovLogin_setup_<버전>.exe
 ; 사용자 권한으로 설치한다(관리자 불필요) — %LOCALAPPDATA%\Programs\GovLogin
 ; 계정 설정·저장 암호는 %LOCALAPPDATA%\gov-cert-login 에 있어 재설치·업데이트·제거해도 남는다.
 
 #ifndef AppVer
-  #define AppVer "0.1.2"
+  #error "버전이 없습니다 — ISCC /DAppVer=<version.py 의 버전> build\installer.iss 로 빌드하세요"
 #endif
 
 [Setup]

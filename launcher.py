@@ -19,6 +19,7 @@ import accounts
 import list_certs
 import logkeep
 import secret_store
+import version
 from version import __version__
 
 FROZEN = getattr(sys, "frozen", False)  # 설치본(PyInstaller exe)
@@ -68,6 +69,24 @@ def _log(msg):
     with LOCK:
         LOG.insert(0, {"t": _now(), "msg": msg})
         del LOG[30:]
+
+
+UPDATE = {}  # 새 판이 있으면 {"ver": "0.1.4"} — 화면 「새 버전」 단추
+
+
+def _check_update():
+    """시작할 때 한 번 GitHub 최신 릴리스를 보고, 더 새 판이 있으면 알린다. 실패하면 조용히 넘어간다.
+    보내는 것은 요청 하나뿐이다(계정·인증서 정보 없음)."""
+    try:
+        req = urllib.request.Request(version.RELEASES_API, headers={
+            "User-Agent": f"gov-cert-login/{__version__}", "Accept": "application/vnd.github+json"})
+        tag = json.load(urllib.request.urlopen(req, timeout=10)).get("tag_name", "")
+    except Exception:  # noqa: BLE001
+        return
+    if version.is_newer(tag):
+        with LOCK:
+            UPDATE["ver"] = tag.lstrip("vV")
+        _log(f"새 버전 {tag} 이 나왔습니다. 위쪽 「새 버전」을 눌러 받으세요.")
 
 
 def _alive(port):
@@ -212,7 +231,12 @@ class Api:
             keys = {k: dict(STATE[k], org=v["org"], short=v["short"], emo=v["emo"], acct=v["acct_label"], ready=v["ready"])
                     for k, v in KEYS.items()}
             return {"cols": [{"site": s[0], "org": s[1]} for s in cols], "rows": rows, "keys": keys, "log": LOG[:12],
-                    "needs_setup": not rows}
+                    "needs_setup": not rows, "update": dict(UPDATE) or None}
+
+    def open_update(self):
+        """내려받기 페이지를 기본 브라우저로 연다(런처 창 안에서 열지 않는다)."""
+        import webbrowser
+        webbrowser.open(version.DOWNLOAD_PAGE)
 
     def launch(self, k):
         return _launch(k) if k in KEYS else "알 수 없는 키입니다."
@@ -318,6 +342,7 @@ if __name__ == "__main__":
     logkeep.purge_old(OUT)  # 30일 지난 실행 기록 정리
     _log(f"공단 로그인 {__version__} 시작")
     threading.Thread(target=_poll, daemon=True).start()
+    threading.Thread(target=_check_update, daemon=True).start()
     webview.create_window(f"공단 로그인 {__version__}",os.path.join(HERE, "launcher.html"), js_api=Api(),
                           width=1120, height=700, min_size=(760, 560), frameless=True, easy_drag=False,
                           background_color="#E9EBEF")

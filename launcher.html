@@ -21,6 +21,8 @@ body{background:var(--desk);font-family:"Pretendard Variable",Pretendard,"Malgun
 /* 제목줄 — 창 끌기 영역 */
 .bar{display:flex;align-items:center;gap:14px;padding:0 10px 0 22px;border-bottom:1px solid var(--line);background:#F4F5F8}
 .bar h1{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.updbtn{all:unset;cursor:pointer;font-size:12.5px;font-weight:650;color:#fff;background:#1F8A4C;border-radius:7px;padding:6px 11px}
+.updbtn:hover{background:#18763F}.updbtn[hidden]{display:none}.updbtn:focus-visible{outline:2px solid #8EA6FF;outline-offset:2px}
 .count{font-size:13px;color:var(--mute)}
 .count b{color:var(--ink);font-weight:700}
 .spacer{flex:1;align-self:stretch}
@@ -143,6 +145,7 @@ kbd{font:inherit;font-weight:600;background:#F1F3F6;border:1px solid #DDE1E7;bor
   <h1>공단 로그인</h1>
   <span class="count" id="count"></span>
   <span class="spacer pywebview-drag-region"></span>
+  <button class="updbtn" id="updbtn" hidden onclick="api('open_update')">새 버전</button>
   <button class="setbtn" id="setbtn">설정</button>
   <button class="allbtn" id="allbtn">전체 열기 <span style="opacity:.75">0</span></button>
   <button class="win" aria-label="최소화" onclick="api('minimize')"><svg width="12" height="12"><path d="M1 6h10" stroke="currentColor" stroke-width="1.6"/></svg></button>
@@ -212,6 +215,7 @@ function build(){
     m.onclick=()=>pressMany(ready);r.append(m);
     plate.append(r)});
   const ks=Object.values(S.keys).filter(v=>v.ready),on=ks.filter(v=>v.state==="on").length;
+  const ub=document.getElementById("updbtn");ub.hidden=!S.update;if(S.update)ub.textContent=`새 버전 ${S.update.ver} 받기`;
   document.getElementById("count").innerHTML=`로그인 <b>${on}</b> / ${ks.length}`;
   document.getElementById("meter").innerHTML=ks.map(v=>`<i class="${v.state}"></i>`).join("");
   document.getElementById("log").innerHTML=S.log.length?S.log.map(l=>`<li><time>${l.t}</time><span>${l.msg}</span></li>`).join("")

@@ -61,10 +61,18 @@ python -m pytest tests -q
 pythonw launcher.py          # 런처 실행
 # 설치 파일: PyInstaller → Inno Setup
 python -m PyInstaller --noconfirm --distpath build/dist --workpath build/work build/govlogin.spec
-ISCC build\installer.iss     # → build\out\GovLogin_setup_<버전>.exe
+ISCC /DAppVer=$(python -c "import version; print(version.__version__)") build\installer.iss   # → build\out\GovLogin_setup_<버전>.exe
 ```
 
-`v*` 태그를 올리면 GitHub Actions가 시험·빌드 후 Releases에 setup.exe를 올립니다.
+### 새 판 내는 순서
+
+1. 코드 수정 → `python -m pytest tests -q`
+2. `version.py` 의 `__version__` 을 올린다 — **버전은 여기 한 곳뿐**입니다(installer.iss 에는 적지 않습니다).
+3. `main` 에 push → `v<버전>` 태그를 push 하면 GitHub Actions가 시험·빌드 후 Releases에 setup.exe를 올립니다.
+   태그와 `version.py` 가 다르면 빌드가 멈춥니다.
+4. 런처는 시작할 때 최신 릴리스를 확인해, 더 새 판이 있으면 위쪽에 「새 버전」 단추를 띄웁니다.
+
+로컬 빌드는 설치본을 직접 시험할 때만 합니다.
 
 ## 주의
 

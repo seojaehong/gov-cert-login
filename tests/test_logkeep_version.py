@@ -13,9 +13,19 @@ import version  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def test_installer_default_matches_version():
+def test_installer_has_no_own_version():
+    """버전은 version.py 한 곳 — installer.iss 에 버전 숫자를 다시 적지 않는다(빌드 때 /DAppVer 로 받는다)."""
     iss = open(os.path.join(ROOT, "build", "installer.iss"), encoding="utf-8").read()
-    assert re.search(r'#define AppVer "([^"]+)"', iss).group(1) == version.__version__
+    assert not re.search(r'#define\s+AppVer\s+"\d', iss)
+    assert "#error" in iss
+
+
+def test_is_newer():
+    assert version.is_newer("v0.1.10", "0.1.9")
+    assert version.is_newer("0.2.0", "0.1.9")
+    assert not version.is_newer("v0.1.2", "0.1.2")
+    assert not version.is_newer("v0.1.1", "0.1.2")
+    assert not version.is_newer("nightly", "0.1.2")
 
 
 def test_fail_screens_keep_fewer(tmp_path):
