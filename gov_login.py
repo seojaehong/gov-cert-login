@@ -419,30 +419,48 @@ def login_nps(page, site_cfg, cert, pw):
 ANYSIGN_EXE = r"C:\Program Files (x86)\SoftForum\XecureWeb\AnySign\dll\AnySign4PC.exe"
 
 
-ANYSIGN_PORT = 30308  # 데몬이 여는 포트(261112 실측 30308·30309). Launcher 서비스는 31026·31027
+ANYSIGN_CONF = r"C:\Program Files (x86)\SoftForum\XecureWeb\AnySign\config\AnySign.conf"
+NHIS_DIRECT_PORT = 10531  # 건보 페이지가 직접 붙는 데몬 포트(사이트 mDirectPort 10530 + 1, wss)
 
 
-def _anysign_listening():
+def _anysign_port():
+    """데몬이 실제로 여는 TLS 포트 — 설치 설정에서 읽는다. 못 읽으면 None."""
+    try:
+        with open(ANYSIGN_CONF, encoding="utf-8", errors="replace") as f:
+            return int(json.load(f)["tls_listen_port"])
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _anysign_listening(port):
     import socket
     try:
-        with socket.create_connection(("127.0.0.1", ANYSIGN_PORT), timeout=1):
+        with socket.create_connection(("127.0.0.1", port), timeout=1):
             return True
     except OSError:
         return False
 
 
 def _ensure_anysign(wait=30):
-    """AnySign4PC 데몬을 미리 띄우고 포트가 열릴 때까지 기다린다.
-    데몬은 붙는 곳이 없으면 40초 뒤 스스로 꺼지고, 다시 뜰 때 포트를 여는 데 약 15초 걸린다(261112 실측).
-    재부팅 직후 첫 건보 로그인에서 사이트가 이 기동을 못 기다리고 「AnySign for PC 설치가 필요」로 실패했다."""
-    if _anysign_listening() or not os.path.exists(ANYSIGN_EXE):
+    """건보 PC 인증서 경로 전에 AnySign4PC 데몬을 점검한다.
+    ①포트: 건보 페이지는 설치 확인 수준 1 이라 Launcher(31026)로 돌아가지 않고 데몬 직접 포트 10531 만 본다.
+      다른 기관이 설치한 AnySign 이 설정을 30308·30309 로 덮어쓰면 건보는 늘 「AnySign for PC 설치가 필요」가 된다(261112 실측).
+    ②기동: 데몬은 붙는 곳이 없으면 40초 뒤 꺼지고, 다시 뜰 때 포트를 여는 데 12~15초 걸린다 → 미리 띄우고 기다린다."""
+    if not os.path.exists(ANYSIGN_EXE):
+        return
+    port = _anysign_port() or NHIS_DIRECT_PORT
+    if port != NHIS_DIRECT_PORT:
+        print(f"⚠ AnySign4PC 포트 설정이 {port} 입니다. 건보는 {NHIS_DIRECT_PORT} 를 찾으므로 「설치가 필요」가 뜹니다.\n"
+              f"  다른 기관 사이트의 보안프로그램 설치가 설정을 바꾼 것입니다. 관리자 권한으로 {ANYSIGN_CONF} 의\n"
+              f"  no_tls_listen_port 를 10530, tls_listen_port 를 10531 로 고친 뒤 AnySign4PC 를 다시 띄우세요.")
+    if _anysign_listening(port):
         return
     import subprocess
     print("AnySign4PC 데몬을 띄웁니다(최대 %d초 대기)." % wait)
     subprocess.Popen([ANYSIGN_EXE], creationflags=0x00000008 | 0x00000200)  # DETACHED | NEW_PROCESS_GROUP
     for _ in range(wait * 2):
         time.sleep(0.5)
-        if _anysign_listening():
+        if _anysign_listening(port):
             return
     print("AnySign4PC 데몬 포트가 열리지 않았습니다 — 그대로 진행합니다.")
 

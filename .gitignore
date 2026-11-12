@@ -18,6 +18,7 @@
 !tests/test_setup.py
 !tests/test_stale_profile.py
 !tests/test_logkeep_version.py
+!tests/test_anysign.py
 !build/
 !build/govlogin.spec
 !build/installer.iss
