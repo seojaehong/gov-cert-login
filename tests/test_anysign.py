@@ -39,3 +39,23 @@ def test_silent_when_port_ok(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(gov_login, "_anysign_listening", lambda port: True)
     gov_login._ensure_anysign()
     assert capsys.readouterr().out == ""
+
+
+class _Page:
+    def __init__(self, want):
+        self.want = want
+
+    def evaluate(self, js):
+        return self.want
+
+
+def test_version_mismatch_warns(monkeypatch, capsys):
+    monkeypatch.setattr(gov_login, "_anysign_installed_version", lambda: "1.1.5.0")
+    gov_login._check_anysign_version(_Page("1.1.5.1"))
+    assert "1.1.5.0" in capsys.readouterr().out
+
+
+def test_version_same_silent(monkeypatch, capsys):
+    monkeypatch.setattr(gov_login, "_anysign_installed_version", lambda: "1.1.5.1")
+    gov_login._check_anysign_version(_Page("1.1.5.1"))
+    assert capsys.readouterr().out == ""

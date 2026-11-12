@@ -53,6 +53,24 @@
 런처는 `%LOCALAPPDATA%\gov-cert-login\sessions.json`에 키별 크롬 디버깅 포트와 상태를 적습니다.
 Playwright 등에서 `connect_over_cdp("http://127.0.0.1:<포트>")`로 붙어 조회할 수 있습니다.
 
+## 건강보험 EDI에서 「AnySign for PC 설치가 필요」가 반복될 때
+
+설치돼 있어도 다음 세 가지 때문에 이 알림이 뜹니다. 런처 실행 기록에 「⚠」로 시작하는 줄이 있으면 그 원인입니다.
+
+1. **포트 설정이 바뀜** — 건보는 AnySign 데몬 포트 10531만 봅니다. 다른 기관 사이트의 AnySign 설치가 설정을 30308 등으로 바꾸면 실패합니다.
+2. **크롬의 로컬 네트워크 접근 차단** — 크롬 156부터 사이트가 PC의 보안프로그램에 붙는 것을 막습니다.
+3. **버전 차이** — 설치본과 사이트 요구 버전이 다르면 계속 설치하라고 합니다. 트레이의 AnySign을 끈 뒤 새로 설치하세요.
+
+1·2는 관리자 PowerShell에서 한 번 실행하면 막힙니다(평소 쓰는 크롬에도 적용).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\install_anysign_guard.ps1            # 설치
+powershell -ExecutionPolicy Bypass -File tools\install_anysign_guard.ps1 -Uninstall # 제거
+```
+
+- 작업 스케줄러에 「gov-cert-login AnySign 포트 지킴이」를 SYSTEM 권한으로 등록합니다(로그온 때 + 10분마다). 포트가 바뀌어 있으면 10530·10531로 되돌리고, 기록을 `%ProgramData%\gov-cert-login\anysign_guard.log`에 남깁니다.
+- 크롬 정책 `LocalNetworkAccessAllowedForUrls`에 공단 주소(nhis·nps·comwel·4insure)를 넣습니다. 크롬에 「조직에서 관리」 표시가 생깁니다.
+
 ## 개발
 
 ```powershell

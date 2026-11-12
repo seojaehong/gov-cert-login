@@ -19,6 +19,9 @@
 !tests/test_stale_profile.py
 !tests/test_logkeep_version.py
 !tests/test_anysign.py
+!tools/
+!tools/anysign_guard.ps1
+!tools/install_anysign_guard.ps1
 !build/
 !build/govlogin.spec
 !build/installer.iss

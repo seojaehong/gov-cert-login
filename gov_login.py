@@ -432,6 +432,31 @@ def _anysign_port():
         return None
 
 
+def _anysign_installed_version():
+    """설치된 AnySign4PC.exe 파일 버전(예 1.1.5.1). 못 읽으면 None."""
+    import subprocess
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command",
+                              f"(Get-Item -LiteralPath '{ANYSIGN_EXE}').VersionInfo.FileVersion"],
+                             capture_output=True, text=True, timeout=20, creationflags=0x08000000).stdout.strip()
+        return out or None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _check_anysign_version(page):
+    """사이트가 요구하는 AnySign 버전과 설치본이 다르면 사이트는 설치돼 있어도 「설치가 필요」를 반복한다
+    (261103 실측 — 설치본 1.1.5.0, 사이트 1.1.5.1). 다르면 실행 기록에 남긴다."""
+    try:
+        want = page.evaluate("() => (window.AnySign && AnySign.mAnySignVersion) || ''")
+    except Exception:  # noqa: BLE001
+        return
+    have = _anysign_installed_version()
+    if want and have and want.strip() != have.strip():
+        print(f"⚠ AnySign4PC 버전이 다릅니다 — 설치 {have}, 사이트 요구 {want}. 사이트 안내대로 새로 설치하세요\n"
+              f"  (트레이의 AnySign 을 끈 뒤 설치해야 덮어써집니다).")
+
+
 def _anysign_listening(port):
     import socket
     try:
@@ -473,6 +498,8 @@ def login_nhis(page, site_cfg, cert, pw):
         _ensure_anysign()  # 페이지가 열릴 때 데몬을 찾으므로 goto 전에
     page.goto("https://edi.nhis.or.kr/", wait_until="domcontentloaded", timeout=60000)
     time.sleep(10)
+    if pc:
+        _check_anysign_version(page)
     # 새 프로필에서는 첫 클릭이 무시되는 일이 있다(261103) → 창이 뜰 때까지 최대 3회
     # 261103 — 기본은 PC 경로(AnySign4PC, img 첫 번째). 크롬 「로컬 네트워크 접근 차단」을 launch 인자로 풀어야
     # 데몬(wss://localhost:10531)에 붙는다(안 풀면 설치돼 있어도 「설치하라」만 반복). GOV_NHIS_MODE=browser 면 옛 경로.
