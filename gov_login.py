@@ -416,15 +416,48 @@ def login_nps(page, site_cfg, cert, pw):
     return False
 
 
+ANYSIGN_EXE = r"C:\Program Files (x86)\SoftForum\XecureWeb\AnySign\dll\AnySign4PC.exe"
+
+
+ANYSIGN_PORT = 30308  # 데몬이 여는 포트(261112 실측 30308·30309). Launcher 서비스는 31026·31027
+
+
+def _anysign_listening():
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", ANYSIGN_PORT), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+def _ensure_anysign(wait=30):
+    """AnySign4PC 데몬을 미리 띄우고 포트가 열릴 때까지 기다린다.
+    데몬은 붙는 곳이 없으면 40초 뒤 스스로 꺼지고, 다시 뜰 때 포트를 여는 데 약 15초 걸린다(261112 실측).
+    재부팅 직후 첫 건보 로그인에서 사이트가 이 기동을 못 기다리고 「AnySign for PC 설치가 필요」로 실패했다."""
+    if _anysign_listening() or not os.path.exists(ANYSIGN_EXE):
+        return
+    import subprocess
+    print("AnySign4PC 데몬을 띄웁니다(최대 %d초 대기)." % wait)
+    subprocess.Popen([ANYSIGN_EXE], creationflags=0x00000008 | 0x00000200)  # DETACHED | NEW_PROCESS_GROUP
+    for _ in range(wait * 2):
+        time.sleep(0.5)
+        if _anysign_listening():
+            return
+    print("AnySign4PC 데몬 포트가 열리지 않았습니다 — 그대로 진행합니다.")
+
+
 def login_nhis(page, site_cfg, cert, pw):
     """건보 EDI — 「브라우저인증서 로그인」(img 두 번째, enableAnySignLite(true)) → 키보드보안 권유 confirm 취소
     → 토탈과 같은 AnySign xwup 창(261103 실측)."""
+    pc = os.environ.get("GOV_NHIS_MODE", "pc") == "pc"
+    if pc:
+        _ensure_anysign()  # 페이지가 열릴 때 데몬을 찾으므로 goto 전에
     page.goto("https://edi.nhis.or.kr/", wait_until="domcontentloaded", timeout=60000)
     time.sleep(10)
     # 새 프로필에서는 첫 클릭이 무시되는 일이 있다(261103) → 창이 뜰 때까지 최대 3회
     # 261103 — 기본은 PC 경로(AnySign4PC, img 첫 번째). 크롬 「로컬 네트워크 접근 차단」을 launch 인자로 풀어야
     # 데몬(wss://localhost:10531)에 붙는다(안 풀면 설치돼 있어도 「설치하라」만 반복). GOV_NHIS_MODE=browser 면 옛 경로.
-    pc = os.environ.get("GOV_NHIS_MODE", "pc") == "pc"
     xw = False
     for _ in range(3):
         btn = page.locator("img[alt='공동인증서 로그인']")
