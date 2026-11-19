@@ -618,10 +618,11 @@ def _chrome_procs():
         return []
 
 
-def _clear_stale_profile(profile, port):
+def _clear_stale_profile(profile, port, force=False):
     """창은 닫혔는데 그 프로필을 잡은 크롬이 남아 있으면 새 창이 「기존 브라우저 세션에서 여는 중」으로
-    바로 꺼진다(261104 건보 대리인1 실측 — 포트 없음, 다시 누르면 됨). 포트가 죽어 있을 때만 정리한다."""
-    if _port_alive(port):
+    바로 꺼진다(261104 건보 대리인1 실측 — 포트 없음, 다시 누르면 됨). 포트가 죽어 있을 때만 정리한다.
+    force=True(--restart) 는 창이 살아 있어도 이 계정 프로필의 크롬만 닫는다 — 로그아웃된 창을 다시 로그인할 때."""
+    if _port_alive(port) and not force:
         return 0
     pids = _profile_pids(profile, _chrome_procs())
     if not pids:
@@ -648,12 +649,12 @@ def _resolve(target):
     return k["site"], cfg, k["profile"], str(k["port"]), target.replace(":", "_")
 
 
-def login(target, cert_idx, keep, dry=False):
+def login(target, cert_idx, keep, dry=False, restart=False):
     site, site_cfg, profile, port, tag = _resolve(target)
     cert = _pick_cert(site_cfg, cert_idx)
     pw = None if dry else _secret(cert["cn"])
     print(time.strftime("%Y-%m-%d %H:%M:%S"), f"공단 로그인 {__version__}", "시작", target, "포트", port)
-    _clear_stale_profile(profile, port)
+    _clear_stale_profile(profile, port, force=restart)
     with sync_playwright() as p:
         def _open():
             return p.chromium.launch_persistent_context(profile, channel="chrome", headless=False,
@@ -714,6 +715,7 @@ if __name__ == "__main__":
     lg.add_argument("--cert", type=int)
     lg.add_argument("--keep", action="store_true")
     lg.add_argument("--dry", action="store_true", help="암호 입력 직전까지만")
+    lg.add_argument("--restart", action="store_true", help="이 계정 창이 떠 있어도 닫고 다시 로그인(로그아웃된 창)")
     a = ap.parse_args()
     if a.cmd == "certs":
         for i, c in enumerate(certs()):
@@ -725,4 +727,4 @@ if __name__ == "__main__":
     elif a.cmd == "store":
         store(a.idx)
     else:
-        sys.exit(0 if login(a.site, a.cert, a.keep, a.dry) else 1)
+        sys.exit(0 if login(a.site, a.cert, a.keep, a.dry, a.restart) else 1)
