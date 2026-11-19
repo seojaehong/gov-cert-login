@@ -11,6 +11,7 @@
 !README.md
 !docs/
 !docs/사용설명서.md
+!docs/index.html
 !accounts.py
 !list_certs.py
 !secret_store.py
