@@ -163,6 +163,8 @@ def _setup_view():
                 v = {"mode": "personal" if sc.get("login_tab") == "personal" else sc.get("kind", "사무대행"),
                      "bizno": sc.get("bizno", ""), "account_hint": sc.get("account_hint", ""),
                      "rrn_saved": secret_store.has("rrn:" + sec)}
+            elif sid == "hsfms":
+                v = {"bizno": sc.get("bizno", "")}
             elif sid == "nps":
                 v = {"mng_no": sc.get("mng_no", ""), "sitepw_saved": secret_store.has("site:" + sec)}
             sites[sid] = v

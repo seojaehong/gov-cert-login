@@ -533,7 +533,51 @@ def login_nhis(page, site_cfg, cert, pw):
     return False
 
 
-SITES = {"comwel": login_comwel, "nps": login_nps, "nhis": login_nhis}
+HSFMS_URL = "https://id.hsfms.co.kr/login"
+
+
+def login_hsfms(page, site_cfg, cert, pw):
+    """효성에프엠에스(효성CMS) — 「사업자등록번호」 탭 → 사업자번호 → 로그인 → AnySign 인증서 창(261119).
+    로그인되면 /login 을 벗어난다. 「아이디를 만드시겠습니까?」 확인창이 뜨면 취소해 인증서 로그인으로 간다."""
+    page.goto(HSFMS_URL, wait_until="domcontentloaded", timeout=60000)
+    time.sleep(3)
+    if "/login" not in page.url:
+        return True  # 이미 로그인돼 있다
+    page.locator("a.tab-name").filter(has_text="사업자등록번호").first.click()
+    time.sleep(1)
+    page.fill("#bizNoInput", "".join(ch for ch in site_cfg["bizno"] if ch.isdigit()))
+    if page.locator("#birthDtInput").count():
+        print("▶ 생년월일 칸이 있습니다. 브라우저에서 직접 입력해 주세요.", flush=True)
+    # 건보와 같은 AnySign4PC 직접 포트(10531). 이 페이지는 로딩 때가 아니라 서명 때 데몬에 붙고,
+    # 데몬은 붙는 곳이 없으면 40초 뒤 꺼진다 → 버튼 누르기 직전에 깨운다(261119 실측 — 아니면 설치 페이지로 빠진다)
+    _ensure_anysign()
+    page.click("#bizLoginBtn")
+    time.sleep(3)
+    # 아이디 생성 권유 → 취소하면 인증서 창으로 간다. 인증서 창(xwup)의 취소는 누르지 않는다(261119 — 눌러서 창이 닫혔다)
+    cancel = page.locator("button:visible:not([id^=xwup])").filter(has_text="취소")
+    if not page.locator("#xwup_OkButton").is_visible() and cancel.count():
+        cancel.first.click()
+        time.sleep(2)
+    _fill_xwup(page, cert, pw)
+    if pw is None:
+        time.sleep(5)
+        return False
+    # 로그인되면 효성CMS PLUS(ap.hyosungcmsplus.co.kr)가 새 탭으로 열린다 — 컨텍스트의 모든 탭을 본다(261119 실측)
+    seen = []
+    for _ in range(45):
+        page.wait_for_timeout(2000)  # time.sleep 은 이벤트를 안 받아 page.url 이 /login 에 멈춰 보인다(261119 실측)
+        for pg in page.context.pages:
+            u = pg.url
+            if u not in seen:
+                seen.append(u)
+            if "hyosungcmsplus.co.kr" in u or (u.startswith("https://id.hsfms.co.kr") and "/login" not in u and "AnySign" not in u):
+                print("로그인 후 주소:", u[:80])
+                return True
+    print("거친 주소:", [s[:70] for s in seen])
+    return False
+
+
+SITES ={"comwel": login_comwel, "nps": login_nps, "nhis": login_nhis, "hsfms": login_hsfms}
 
 
 def _port_alive(port):
@@ -615,7 +659,7 @@ def login(target, cert_idx, keep, dry=False):
             return p.chromium.launch_persistent_context(profile, channel="chrome", headless=False,
                                                         viewport={"width": 1400, "height": 900},
                                                         args=["--remote-debugging-port=" + port]  # 로그인 뒤 다른 스크립트가 connect_over_cdp 로 붙는다
-                                                        + (["--disable-features=LocalNetworkAccessChecks"] if site == "nhis" else []))  # 건보 보안모듈 데몬 접속 허용(261103)
+                                                        + (["--disable-features=LocalNetworkAccessChecks"] if site in ("nhis", "hsfms") else []))  # 건보 보안모듈 데몬 접속 허용(261103)
         try:
             ctx = _open()
         except Exception as e:  # noqa: BLE001 — 남은 크롬이 프로필을 쥐고 있던 경우 한 번만 다시 연다

@@ -31,6 +31,7 @@ SITES = [
     ("nps", "국민연금", "연금 EDI", "🏦", True),
     ("nhis", "건강보험", "건보 EDI", "🏥", True),
     ("hometax", "국세청", "홈택스", "🧾", False),
+    ("hsfms", "효성에프엠에스", "효성CMS", "💳", True),
 ]
 SITE = {s[0]: s for s in SITES}
 
@@ -124,6 +125,11 @@ def upsert(form, cert_cns):
                 sc["account_hint"] = hint
             else:
                 sc.pop("account_hint", None)
+        elif sid == "hsfms":
+            b = _digits(f.get("bizno"))
+            if len(b) != 10:
+                raise ValueError("효성에프엠에스 사업자등록번호는 10자리입니다.")
+            sc["bizno"] = f"{b[:3]}-{b[3:5]}-{b[5:]}"
         elif sid == "nps":
             m = _digits(f.get("mng_no"))
             if len(m) != 11:
