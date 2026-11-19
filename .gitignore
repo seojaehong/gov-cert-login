@@ -9,6 +9,8 @@
 !login_state.py
 !config.example.json
 !README.md
+!docs/
+!docs/사용설명서.md
 !accounts.py
 !list_certs.py
 !secret_store.py
