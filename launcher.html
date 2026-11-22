@@ -33,13 +33,13 @@ body{background:var(--desk);font-family:"Pretendard Variable",Pretendard,"Malgun
 main{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:22px;padding:26px 26px 22px;min-height:0}
 
 /* 키보드 본체 */
-.deck{align-self:center;min-width:0;background:linear-gradient(180deg,var(--case-a),var(--case-b));border-radius:26px;padding:16px 18px 18px;
+.deck{--rowname:84px;align-self:center;min-width:0;background:linear-gradient(180deg,var(--case-a),var(--case-b));border-radius:26px;padding:16px 18px 18px;
   box-shadow:0 28px 50px -30px rgba(25,32,48,.6),inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.08)}
 .engrave{font-size:12px;font-weight:600;color:#5E6676;text-shadow:0 1px 0 rgba(255,255,255,.65)}
-.cols{display:grid;grid-template-columns:64px repeat(var(--n),1fr);gap:12px;padding:0 10px 8px}
-.cols span{padding-left:4px}
+.cols{display:grid;grid-template-columns:var(--rowname) repeat(var(--n),minmax(0,1fr));gap:12px;padding:0 10px 8px}
+.cols span{padding-left:4px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plate{background:var(--plate);border-radius:16px;padding:12px 10px;box-shadow:inset 0 2px 6px rgba(0,0,0,.18)}
-.row{display:grid;grid-template-columns:64px repeat(var(--n),1fr);gap:12px;align-items:stretch}
+.row{display:grid;grid-template-columns:var(--rowname) repeat(var(--n),minmax(0,1fr));gap:12px;align-items:stretch}
 .gap{aspect-ratio:1/0.92}
 .key.soon{cursor:default}
 .key.soon .cap{background:repeating-linear-gradient(135deg,#F4F5F7 0 8px,#EEF0F3 8px 16px)}
@@ -49,19 +49,19 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:22px;padding:26p
 .allbtn{all:unset;cursor:pointer;font-size:13px;font-weight:650;color:#fff;background:var(--mod);border-radius:8px;padding:6px 12px}
 .allbtn:hover{background:#3A57E6}.allbtn:focus-visible{outline:2px solid #8EA6FF;outline-offset:2px}
 .row+.row{margin-top:12px}
-.rowname{display:flex;align-items:center;justify-content:flex-end;padding-right:4px;writing-mode:horizontal-tb}
+.rowname{display:flex;align-items:center;justify-content:flex-end;padding-right:4px;min-width:0;text-align:right;word-break:keep-all;overflow:hidden}
 
-.key{all:unset;position:relative;aspect-ratio:1/0.92;min-width:0;border-radius:14px;background:var(--cap-side);padding-bottom:8px;cursor:pointer;
+.key{all:unset;position:relative;aspect-ratio:1/0.92;min-width:0;container-type:inline-size;border-radius:14px;background:var(--cap-side);padding-bottom:8px;cursor:pointer;
   transition:padding-bottom .07s ease, transform .07s ease}
 .key::after{content:"";position:absolute;left:10%;right:10%;bottom:-6px;height:14px;border-radius:50%;filter:blur(9px);opacity:0;transition:opacity .4s}
 .key.on::after{background:var(--on);opacity:.85}
 .key.busy::after{background:var(--busy);opacity:.7;animation:pulse 1.4s ease-in-out infinite}
 .cap{position:relative;z-index:1;height:100%;border-radius:12px;background:linear-gradient(180deg,var(--cap),var(--cap-b));
-  box-shadow:inset 0 -3px 0 rgba(0,0,0,.04),inset 0 1px 0 #fff;padding:12px 13px 11px;display:flex;flex-direction:column}
-.emo{font-size:30px;line-height:1;font-family:"Segoe UI Emoji","Apple Color Emoji",sans-serif}
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.04),inset 0 1px 0 #fff;padding:clamp(8px,10cqi,12px) clamp(9px,11cqi,13px) clamp(7px,9cqi,11px);display:flex;flex-direction:column}
+.emo{font-size:clamp(18px,22cqi,30px);line-height:1;font-family:"Segoe UI Emoji","Apple Color Emoji",sans-serif}
 .num{position:absolute;top:10px;right:12px;font-size:12px;font-weight:600;color:#A0A7B4}
-.name{white-space:nowrap;font-size:clamp(15px,1.75vw,22px);font-weight:750;letter-spacing:-.02em;line-height:1.15;margin-top:auto}
-.stat{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--mute);min-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.name{flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(11px,15cqi,22px);font-weight:750;letter-spacing:-.02em;line-height:1.15;margin-top:auto}
+.stat{display:flex;align-items:center;gap:6px;margin-top:clamp(3px,5cqi,8px);font-size:12px;color:var(--mute);min-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .led{width:8px;height:8px;border-radius:50%;background:var(--off);flex:none}
 .on .led{background:var(--on)} .busy .led{background:var(--busy)}
 .on .stat{color:#167A47;font-weight:600}
@@ -72,7 +72,7 @@ main{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:22px;padding:26p
 .key.mod{background:var(--mod-side)}
 .key.mod .cap{background:linear-gradient(180deg,#4562EE,var(--mod));box-shadow:inset 0 1px 0 rgba(255,255,255,.25);color:#fff}
 .key.mod:hover .cap{background:linear-gradient(180deg,#5370F2,#3651DE)}
-.key.mod .name{font-size:17px;font-weight:700}
+.key.mod .name{font-size:clamp(11px,14cqi,17px);font-weight:700}
 .key.mod .stat{color:#C9D3FF}
 .key.mod .num{color:#AFC0FF}
 
@@ -211,7 +211,7 @@ function build(){
     const ready=row.cells.filter(k=>k&&S.keys[k].ready);
     const m=document.createElement("button");m.className="key mod";
     m.setAttribute("aria-label",`${row.label} 계정 모두 열기`);
-    m.innerHTML=`<div class="cap"><span class="emo" aria-hidden="true">⚡</span><div class="name">모두 열기</div><div class="stat">${row.label} ${ready.length}개</div></div>`;
+    m.innerHTML=`<div class="cap"><span class="emo" aria-hidden="true">⚡</span><div class="name">모두 열기</div><div class="stat">${ready.length}개</div></div>`;
     m.onclick=()=>pressMany(ready);r.append(m);
     plate.append(r)});
   const ks=Object.values(S.keys).filter(v=>v.ready),on=ks.filter(v=>v.state==="on").length;
