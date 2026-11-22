@@ -45,6 +45,8 @@ Name: "{userdesktop}\공단 로그인"; Filename: "{app}\GovLogin.exe"; Tasks: d
 
 [Run]
 Filename: "{app}\GovLogin.exe"; Description: "공단 로그인 실행"; Flags: nowait postinstall skipifsilent
+; 런처 안 「새 버전」(조용히 설치 /VERYSILENT) 이 끝나면 다시 켠다
+Filename: "{app}\GovLogin.exe"; Flags: nowait; Check: WizardSilent
 
 [Code]
 // 크롬이 없으면 안내만 한다(설치는 계속). 로그인 창은 PC에 깔린 크롬을 쓴다.

@@ -2,7 +2,7 @@
 """버전은 여기 한 곳에서만 정한다.
 릴리스 태그(v<버전>)는 이 값과 같아야 하고(release.yml 이 확인), 설치 파일 버전은 빌드 때 이 값을 넘겨받는다
 (installer.iss 에는 버전을 적지 않는다)."""
-__version__ = "0.1.7"
+__version__ = "0.1.8"
 
 RELEASES_API = "https://api.github.com/repos/seojaehong/gov-cert-login/releases/latest"
 DOWNLOAD_PAGE = "https://github.com/seojaehong/gov-cert-login/releases/latest"
@@ -10,6 +10,18 @@ DOWNLOAD_PAGE = "https://github.com/seojaehong/gov-cert-login/releases/latest"
 
 def _parts(v):
     return tuple(int(x) for x in v.strip().lstrip("vV").split("."))
+
+
+def pick_setup(release):
+    """GitHub 최신 릴리스 JSON → {"ver", "url", "sha256"} (설치 파일 GovLogin_setup_*.exe). 없거나 digest 가 없으면 None.
+    digest(sha256) 가 없으면 자동 설치하지 않는다 — 받은 파일을 확인할 근거가 없으므로."""
+    tag = str(release.get("tag_name") or "")
+    for a in release.get("assets") or []:
+        name, dg = a.get("name", ""), str(a.get("digest") or "")
+        if name.startswith("GovLogin_setup_") and name.endswith(".exe") and dg.startswith("sha256:") \
+                and str(a.get("browser_download_url", "")).startswith("https://github.com/"):
+            return {"ver": tag.lstrip("vV"), "url": a["browser_download_url"], "sha256": dg[7:].lower()}
+    return None
 
 
 def is_newer(remote, local=__version__):

@@ -77,16 +77,41 @@ UPDATE = {}  # 새 판이 있으면 {"ver": "0.1.4"} — 화면 「새 버전」
 def _check_update():
     """시작할 때 한 번 GitHub 최신 릴리스를 보고, 더 새 판이 있으면 알린다. 실패하면 조용히 넘어간다.
     보내는 것은 요청 하나뿐이다(계정·인증서 정보 없음)."""
+    if not FROZEN:  # 개발본(소스 실행)은 git 이 정본 — 알리지 않는다
+        return
     try:
         req = urllib.request.Request(version.RELEASES_API, headers={
             "User-Agent": f"gov-cert-login/{__version__}", "Accept": "application/vnd.github+json"})
-        tag = json.load(urllib.request.urlopen(req, timeout=10)).get("tag_name", "")
+        rel = json.load(urllib.request.urlopen(req, timeout=10))
     except Exception:  # noqa: BLE001
         return
+    tag = rel.get("tag_name", "")
     if version.is_newer(tag):
         with LOCK:
             UPDATE["ver"] = tag.lstrip("vV")
-        _log(f"새 버전 {tag} 이 나왔습니다. 위쪽 「새 버전」을 눌러 받으세요.")
+            UPDATE["setup"] = version.pick_setup(rel)
+        _log(f"새 버전 {tag} 이 나왔습니다. 위쪽 「새 버전」을 누르면 받아서 설치하고 다시 켭니다.")
+
+
+def _install_update(setup):
+    """설치 파일을 받아 sha256 을 맞춰 보고, 조용히 설치한 뒤 런처를 닫는다(설치가 끝나면 설치 파일이 다시 켠다).
+    맞지 않으면 설치하지 않는다. 계정·저장 암호는 %LOCALAPPDATA%\\gov-cert-login 에 있어 그대로 남는다."""
+    import hashlib
+    import tempfile
+    _log(f"새 버전 {setup['ver']} 을 받는 중입니다")
+    req = urllib.request.Request(setup["url"], headers={"User-Agent": f"gov-cert-login/{__version__}"})
+    data = urllib.request.urlopen(req, timeout=120).read()
+    got = hashlib.sha256(data).hexdigest()
+    if got != setup["sha256"]:
+        _log("받은 설치 파일이 공개된 값과 다릅니다 — 설치하지 않습니다")
+        return False
+    path = os.path.join(tempfile.gettempdir(), f"GovLogin_setup_{setup['ver']}.exe")
+    with open(path, "wb") as f:
+        f.write(data)
+    _log("확인했습니다. 설치하고 다시 켭니다")
+    subprocess.Popen([path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"],
+                     creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP, close_fds=True)
+    return True
 
 
 def _alive(port):
@@ -238,7 +263,16 @@ class Api:
                     "needs_setup": not rows, "update": dict(UPDATE) or None}
 
     def open_update(self):
-        """내려받기 페이지를 기본 브라우저로 연다(런처 창 안에서 열지 않는다)."""
+        """설치본: 받아서 확인하고 조용히 설치 → 런처를 닫는다(설치 파일이 다시 켠다).
+        확인 근거(sha256)가 없거나 실패하면 예전처럼 내려받기 페이지를 기본 브라우저로 연다."""
+        setup = UPDATE.get("setup")
+        if FROZEN and setup:
+            try:
+                if _install_update(setup):
+                    threading.Timer(1.0, lambda: webview.windows[0].destroy()).start()
+                    return "설치 중"
+            except Exception as e:  # noqa: BLE001
+                _log(f"자동 업데이트 실패 — 내려받기 페이지를 엽니다 ({type(e).__name__})")
         import webbrowser
         webbrowser.open(version.DOWNLOAD_PAGE)
 

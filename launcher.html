@@ -215,7 +215,7 @@ function build(){
     m.onclick=()=>pressMany(ready);r.append(m);
     plate.append(r)});
   const ks=Object.values(S.keys).filter(v=>v.ready),on=ks.filter(v=>v.state==="on").length;
-  const ub=document.getElementById("updbtn");ub.hidden=!S.update;if(S.update)ub.textContent=`새 버전 ${S.update.ver} 받기`;
+  const ub=document.getElementById("updbtn");ub.hidden=!S.update;if(S.update)ub.textContent=`새 버전 ${S.update.ver} 설치`;
   document.getElementById("count").innerHTML=`로그인 <b>${on}</b> / ${ks.length}`;
   document.getElementById("meter").innerHTML=ks.map(v=>`<i class="${v.state}"></i>`).join("");
   document.getElementById("log").innerHTML=S.log.length?S.log.map(l=>`<li><time>${l.t}</time><span>${l.msg}</span></li>`).join("")
