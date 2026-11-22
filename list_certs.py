@@ -48,7 +48,19 @@ def certs():
                 continue
             out.append({"cn": cn, "issuer": issuer, "not_after": c.not_valid_after_utc.date().isoformat(),
                         "dir": os.path.dirname(p)})
+    # 추가 폴더의 .pfx/.p12 — 암호 없이는 안을 못 읽으니 파일 이름을 CN 으로 쓴다(발급 파일 이름 = CN)
+    for root in extra_dirs():
+        for p in sorted(glob.glob(os.path.join(root, "*.pfx")) + glob.glob(os.path.join(root, "*.p12"))):
+            cn = os.path.splitext(os.path.basename(p))[0]
+            if any(o["cn"] == cn for o in out):
+                continue
+            out.append({"cn": cn, "issuer": "pfx", "not_after": "?", "dir": root, "files": [p]})
     return out
+
+
+def files_of(cert):
+    """인증서 창에 넣을 파일 — pfx 는 그 파일 하나, NPKI 는 signCert.der + signPri.key."""
+    return cert.get("files") or [os.path.join(cert["dir"], "signCert.der"), os.path.join(cert["dir"], "signPri.key")]
 
 
 if __name__ == "__main__":

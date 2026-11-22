@@ -22,7 +22,7 @@ from playwright.sync_api import sync_playwright
 import accounts
 import logkeep
 import secret_store
-from list_certs import certs
+from list_certs import certs, files_of
 from version import __version__
 
 if sys.stdout:  # 설치본(창 없는 exe)에서 출력처가 없을 수 있다
@@ -198,7 +198,7 @@ def _wait_user_keypad(page, sec=300):
 
 
 def _drop_and_pw(page, cert, pw):
-    files = [os.path.join(cert["dir"], "signCert.der"), os.path.join(cert["dir"], "signPri.key")]
+    files = files_of(cert)
     fin = page.locator("input[type=file]")
     done = False
     for i in range(fin.count()):
@@ -354,7 +354,7 @@ def _fill_ksbiz(page, fr, cert, pw):
     time.sleep(2)
     row = fr.locator("tr").filter(has_text=cert["cn"][:10])
     if not row.count():
-        fs = [os.path.join(cert["dir"], "signCert.der"), os.path.join(cert["dir"], "signPri.key")]
+        fs = files_of(cert)
         fr.locator("#searchSign").click()
         time.sleep(1.5)
         with page.expect_file_chooser(timeout=10000) as fc:
