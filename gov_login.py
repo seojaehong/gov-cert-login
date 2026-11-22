@@ -582,9 +582,9 @@ WORK24_LOGIN = "https://www.work24.go.kr/cm/z/b/0210/openLginPage.do?loginGbn=EB
 
 def _work24_logged_in(page):
     """고용24 — 로그인되면 #btn_logout 이 「보인다」. 로그아웃 상태에도 숨은 채로 문서에 있다(261122 — 글자만 보고 오판)."""
+    # page.evaluate 는 쓰지 않는다 — 로그인 뒤 고용24 화면이 전역 Map 을 덮어써 evaluate 가 「refs.set is not a function」으로 깨진다(261122)
     try:
-        return page.evaluate("""() => { const e = document.querySelector('#btn_logout');
-          if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }""")
+        return page.locator("#btn_logout").first.is_visible()
     except Exception:  # noqa: BLE001 — 이동 중이면 다음 회차에 다시 본다
         return False
 
