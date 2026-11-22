@@ -577,7 +577,63 @@ def login_hsfms(page, site_cfg, cert, pw):
     return False
 
 
-SITES ={"comwel": login_comwel, "nps": login_nps, "nhis": login_nhis, "hsfms": login_hsfms}
+WORK24_LOGIN = "https://www.work24.go.kr/cm/z/b/0210/openLginPage.do?loginGbn=EBM00"
+
+
+def _work24_logged_in(page):
+    """고용24 — 로그인되면 #btn_logout 이 「보인다」. 로그아웃 상태에도 숨은 채로 문서에 있다(261122 — 글자만 보고 오판)."""
+    try:
+        return page.evaluate("""() => { const e = document.querySelector('#btn_logout');
+          if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }""")
+    except Exception:  # noqa: BLE001 — 이동 중이면 다음 회차에 다시 본다
+        return False
+
+
+def login_work24(page, site_cfg, cert, pw):
+    """고용24 기업회원 — 기업회원 탭(#btnArea02) → 유형(일반 사업자·사무대행기관·대리인·훈련기관) → 공동인증서(#btnEntrCrt)
+    → AnySign 인증서 창(xwup, 토탈과 같은 창). 사업자용 인증서만 받는다(대표자 개인·전자세금용 불가 — 화면 안내, 261122 탐침)."""
+    page.goto(WORK24_LOGIN, wait_until="domcontentloaded", timeout=60000)
+    page.wait_for_timeout(4000)
+    if _work24_logged_in(page):
+        return True
+    page.click("#btnArea02")
+    page.wait_for_timeout(1500)
+    kind = site_cfg.get("kind") or "사무대행기관"
+    if kind not in ("일반 사업자", "사무대행기관"):
+        raise ValueError(f"고용24 기업회원 「{kind}」 로그인은 아직 지원하지 않습니다(일반 사업자·사무대행기관만).")
+    page.locator("button:visible").filter(has_text=re.compile("^" + kind + "$")).first.click()
+    page.wait_for_timeout(1000)
+    if kind == "사무대행기관":
+        # 사무대행기관은 「대상 사업장관리번호(11) + 사무대행기관번호(10)」로 사업장마다 따로 들어간다(261122 탐침).
+        # 대상 사업장은 키마다 바뀌므로 GOV_WORK24_BPLC 로 바꿔 넣을 수 있다(없으면 설정값).
+        bplc = "".join(ch for ch in (os.environ.get("GOV_WORK24_BPLC") or site_cfg.get("bplc_no") or "") if ch.isdigit())
+        isoa = "".join(ch for ch in (site_cfg.get("isoa_no") or "") if ch.isdigit())
+        if len(bplc) != 11 or len(isoa) != 10:
+            raise ValueError("고용24 사무대행기관 로그인에는 대상 사업장관리번호 11자리와 사무대행기관번호 10자리가 필요합니다.")
+        page.fill("#bplcManageNo", bplc)
+        page.fill("#isoaNo", isoa)
+        page.click("#btnEntrCrt02")
+    else:
+        page.click("#btnEntrCrt")
+    _fill_xwup(page, cert, pw)
+    if pw is None:
+        time.sleep(5)
+        return False
+    for _ in range(40):
+        page.wait_for_timeout(2000)  # time.sleep 은 이벤트를 안 받아 이동이 안 보인다(261119 효성 실측)
+        if _work24_logged_in(page):
+            print("로그인 후 주소:", page.url[:80])
+            return True
+    # 실패 사유가 화면 안 안내창(레이어)으로만 뜨는 경우가 있어 보이는 안내 문구를 남긴다
+    try:
+        print("화면 안내:", page.evaluate("""() => [...document.querySelectorAll('.layer,.popup,[role=dialog],.alert,.modal')]
+          .filter(e => e.getBoundingClientRect().width > 0).map(e => e.innerText.trim().replace(/\\s+/g, ' ').slice(0, 200)).slice(0, 3)"""))
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+SITES ={"comwel": login_comwel, "nps": login_nps, "nhis": login_nhis, "hsfms": login_hsfms, "work24": login_work24}
 
 
 def _port_alive(port):

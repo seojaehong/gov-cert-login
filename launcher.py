@@ -165,6 +165,8 @@ def _setup_view():
                      "rrn_saved": secret_store.has("rrn:" + sec)}
             elif sid == "hsfms":
                 v = {"bizno": sc.get("bizno", "")}
+            elif sid == "work24":
+                v = {"kind": sc.get("kind", "사무대행기관"), "isoa_no": sc.get("isoa_no", ""), "bplc_no": sc.get("bplc_no", "")}
             elif sid == "nps":
                 v = {"mng_no": sc.get("mng_no", ""), "sitepw_saved": secret_store.has("site:" + sec)}
             sites[sid] = v

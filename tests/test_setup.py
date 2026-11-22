@@ -119,3 +119,17 @@ def test_add_cert_dir(env):
     list_certs.add_dir("E:\\NPKI")
     list_certs.add_dir("E:\\NPKI")
     assert list_certs.extra_dirs() == ["E:\\NPKI"]
+
+
+def test_work24_isoa_kind_saved_and_validated(env):
+    """고용24 사무대행기관 = 사무대행기관번호 10자리 필수 · 대상 사업장관리번호 11자리(선택). 화면에는 값 그대로 돌려준다(비밀값 아님)."""
+    _, L = env
+    L._setup_save(form(sites={"work24": {"kind": "사무대행기관", "isoa_no": "12345-67890", "bplc_no": "123-4567-8901"}}))
+    sc = accounts.load()["accounts"][0]["sites"]["work24"]
+    assert sc["kind"] == "사무대행기관" and sc["isoa_no"] == "1234567890" and sc["bplc_no"] == "12345678901"
+    assert L._setup_view()["accounts"][0]["sites"]["work24"]["isoa_no"] == "1234567890"
+    with pytest.raises(ValueError):
+        accounts.upsert(form(id="a1", sites={"work24": {"kind": "사무대행기관", "isoa_no": "123"}}), [CERTS[0]["cn"]])
+    accounts.upsert(form(id="a1", sites={"work24": {"kind": "일반 사업자", "isoa_no": "1234567890"}}), [CERTS[0]["cn"]])
+    sc = accounts.load()["accounts"][0]["sites"]["work24"]
+    assert sc["kind"] == "일반 사업자" and "isoa_no" not in sc

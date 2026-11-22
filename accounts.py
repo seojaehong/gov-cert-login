@@ -32,6 +32,7 @@ SITES = [
     ("nhis", "건강보험", "건보 EDI", "🏥", True),
     ("hometax", "국세청", "홈택스", "🧾", False),
     ("hsfms", "효성에프엠에스", "효성CMS", "💳", True),
+    ("work24", "고용노동부", "고용24", "👶", True),
 ]
 SITE = {s[0]: s for s in SITES}
 
@@ -74,6 +75,7 @@ def save(data):
 
 
 COMWEL_KINDS = ("사무대행", "사업장", "의료기관")
+WORK24_KINDS = ("사무대행기관", "일반 사업자")  # 고용24 기업회원 유형 중 로그인 구현된 것(대리인·훈련기관은 아직)
 
 
 def _digits(s):
@@ -130,6 +132,25 @@ def upsert(form, cert_cns):
             if len(b) != 10:
                 raise ValueError("효성에프엠에스 사업자등록번호는 10자리입니다.")
             sc["bizno"] = f"{b[:3]}-{b[3:5]}-{b[5:]}"
+        elif sid == "work24":
+            kind = f.get("kind") or "사무대행기관"
+            if kind not in WORK24_KINDS:
+                raise ValueError("고용24 기업회원 유형을 골라 주세요.")
+            sc["kind"] = kind
+            if kind == "사무대행기관":
+                i, b = _digits(f.get("isoa_no")), _digits(f.get("bplc_no"))
+                if len(i) != 10:
+                    raise ValueError("고용24 사무대행기관번호는 10자리입니다.")
+                if b and len(b) != 11:
+                    raise ValueError("고용24 대상 사업장관리번호는 11자리입니다.")
+                sc["isoa_no"] = i
+                if b:
+                    sc["bplc_no"] = b
+                else:
+                    sc.pop("bplc_no", None)
+            else:
+                sc.pop("isoa_no", None)
+                sc.pop("bplc_no", None)
         elif sid == "nps":
             m = _digits(f.get("mng_no"))
             if len(m) != 11:
