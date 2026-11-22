@@ -33,6 +33,7 @@ SITES = [
     ("hometax", "국세청", "홈택스", "🧾", False),
     ("hsfms", "효성에프엠에스", "효성CMS", "💳", True),
     ("work24", "고용노동부", "고용24", "👶", True),
+    ("labor", "노동포털", "민원", "📋", True),  # 취업규칙 신고·노사협의회 규정 제출(261122)
 ]
 SITE = {s[0]: s for s in SITES}
 
@@ -127,10 +128,10 @@ def upsert(form, cert_cns):
                 sc["account_hint"] = hint
             else:
                 sc.pop("account_hint", None)
-        elif sid == "hsfms":
+        elif sid in ("hsfms", "labor"):
             b = _digits(f.get("bizno"))
             if len(b) != 10:
-                raise ValueError("효성에프엠에스 사업자등록번호는 10자리입니다.")
+                raise ValueError(f"{SITE[sid][1]} 사업자등록번호는 10자리입니다.")
             sc["bizno"] = f"{b[:3]}-{b[3:5]}-{b[5:]}"
         elif sid == "work24":
             kind = f.get("kind") or "사무대행기관"

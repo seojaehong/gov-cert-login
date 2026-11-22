@@ -634,7 +634,57 @@ def login_work24(page, site_cfg, cert, pw):
     return False
 
 
-SITES ={"comwel": login_comwel, "nps": login_nps, "nhis": login_nhis, "hsfms": login_hsfms, "work24": login_work24}
+LABOR_LOGIN = "https://labor.moel.go.kr/login/security.do"
+
+
+def login_labor(page, site_cfg, cert, pw):
+    """고용노동부 노동포털(민원 — 취업규칙 신고·노사협의회 규정 제출) 기업회원.
+    기업 탭(#tab02) → 사업자등록번호(#brno1~3) → 「공동, 브라우저인증서」(#company_join) → MagicLine 인증서 창(iframe Child.html)
+    → 하드디스크 목록(#dataTable)에서 CN 행 → #input_cert_pw → #btn_confirm_iframe (261122 실측).
+    인증서 창은 PC 의 MagicLine4NX(127.0.0.1:42235)에 붙으므로 크롬 로컬 네트워크 확인을 끄고 연다(login() 의 args).
+    창이 최소화돼 있으면 크롬이 그리지 않아 클릭이 멈춘다."""
+    page.goto(LABOR_LOGIN, wait_until="domcontentloaded", timeout=60000)
+    page.wait_for_timeout(3000)
+    if _work24_logged_in(page):  # 보이는 「로그아웃」 버튼 — 같은 판정
+        return True
+    if cert.get("files"):
+        raise ValueError("노동포털은 아직 PC(NPKI) 인증서만 됩니다 — pfx 가져오기는 미구현.")
+    b = "".join(ch for ch in (site_cfg.get("bizno") or "") if ch.isdigit())
+    if len(b) != 10:
+        raise ValueError("노동포털 기업 로그인에는 사업자등록번호 10자리가 필요합니다.")
+    page.click("#tab02")
+    page.fill("#brno1", b[:3])
+    page.fill("#brno2", b[3:5])
+    page.fill("#brno3", b[5:])
+    page.click("#company_join")
+    fr = None
+    for _ in range(30):
+        page.wait_for_timeout(1000)
+        fr = next((f for f in page.frames if "MagicLine4Web" in f.url), None)
+        if fr and fr.locator("#ML_window").is_visible():
+            break
+    else:
+        raise RuntimeError("MagicLine 인증서 창이 뜨지 않았습니다(MagicLine4NX 설치·실행 확인).")
+    page.wait_for_timeout(2500)  # 하드디스크 목록을 읽어 온다
+    row = fr.locator("#dataTable tbody tr").filter(has_text=cert["cn"][:10])
+    if not row.count():
+        raise RuntimeError("인증서 창의 하드디스크 목록에 이 인증서가 없습니다.")
+    row.first.click()
+    if pw is None:
+        print("[dry] 인증서 창·목록 선택까지 확인")
+        return False
+    fr.locator("#input_cert_pw").first.fill(pw)
+    fr.locator("#btn_confirm_iframe").click()
+    for _ in range(20):
+        page.wait_for_timeout(1500)
+        if _work24_logged_in(page):
+            print("로그인 후 주소:", page.url[:80])
+            return True
+    return False
+
+
+SITES ={"comwel": login_comwel, "nps": login_nps, "nhis": login_nhis, "hsfms": login_hsfms, "work24": login_work24,
+        "labor": login_labor}
 
 
 def _port_alive(port):
@@ -717,7 +767,7 @@ def login(target, cert_idx, keep, dry=False, restart=False):
             return p.chromium.launch_persistent_context(profile, channel="chrome", headless=False,
                                                         viewport={"width": 1400, "height": 900},
                                                         args=["--remote-debugging-port=" + port]  # 로그인 뒤 다른 스크립트가 connect_over_cdp 로 붙는다
-                                                        + (["--disable-features=LocalNetworkAccessChecks"] if site in ("nhis", "hsfms") else []))  # 건보 보안모듈 데몬 접속 허용(261103)
+                                                        + (["--disable-features=LocalNetworkAccessChecks"] if site in ("nhis", "hsfms", "labor") else []))  # 보안모듈 데몬(127.0.0.1) 접속 허용 — 건보 261103, 노동포털 MagicLine4NX 261122
         try:
             ctx = _open()
         except Exception as e:  # noqa: BLE001 — 남은 크롬이 프로필을 쥐고 있던 경우 한 번만 다시 연다

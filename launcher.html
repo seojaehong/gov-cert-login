@@ -291,6 +291,9 @@ function drawSetup(){
     else if(s.id==="hsfms")body=`
       <label class="fld"><span>사업자등록번호</span><input type="text" name="hs_bizno" inputmode="numeric" value="${esc((a.sites.hsfms||{}).bizno)}" placeholder="000-00-00000">
         <small>사업자등록번호 탭 → 공동인증서로 들어갑니다.</small></label>`;
+    else if(s.id==="labor")body=`
+      <label class="fld"><span>사업자등록번호</span><input type="text" name="lb_bizno" inputmode="numeric" value="${esc((a.sites.labor||{}).bizno)}" placeholder="000-00-00000">
+        <small>기업 탭 → 공동인증서(MagicLine). PC에 있는 인증서만 됩니다.</small></label>`;
     return `<div class="site${on?" on":""}${s.ready?"":" soon"}" data-s="${s.id}"><label><input type="checkbox" name="site_${s.id}"${on?" checked":""}>${esc(s.org)} ${esc(s.short)}${s.ready?"":" (준비 중)"}</label>
       ${body?`<div class="body">${body}</div>`:""}</div>`}).join("")}`;
   form.querySelectorAll(".site input[type=checkbox]").forEach(c=>c.onchange=()=>c.closest(".site").classList.toggle("on",c.checked));
@@ -306,6 +309,7 @@ document.getElementById("fsave").onclick=async()=>{
   if(sites.comwel)sites.comwel={mode:f.cw_mode.value,bizno:f.cw_bizno.value,account_hint:f.cw_hint.value};
   if(sites.nps)sites.nps={mng_no:f.np_mng.value};
   if(sites.hsfms)sites.hsfms={bizno:f.hs_bizno.value};
+  if(sites.labor)sites.labor={bizno:f.lb_bizno.value};
   if(sites.work24)sites.work24={kind:f.w24_kind.value,isoa_no:f.w24_isoa.value,bplc_no:f.w24_bplc.value};
   const secrets={cert_pw:f.cert_pw.value,rrn:sites.comwel&&f.cw_mode.value==="personal"?f.cw_rrn.value:"",sitepw:sites.nps?f.np_pw.value:""};
   const body={id:cur,label:f.label.value,cert_cn:f.cert_cn?f.cert_cn.value:"",sites,secrets};
