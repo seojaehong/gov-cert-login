@@ -133,3 +133,29 @@ def test_work24_isoa_kind_saved_and_validated(env):
     accounts.upsert(form(id="a1", sites={"work24": {"kind": "일반 사업자", "isoa_no": "1234567890"}}), [CERTS[0]["cn"]])
     sc = accounts.load()["accounts"][0]["sites"]["work24"]
     assert sc["kind"] == "일반 사업자" and "isoa_no" not in sc
+
+
+def test_kosha_bizno_saved_validated_and_key_ready(env):
+    """산업안전포털(kosha) = 사업자등록번호 10자리 필수, 키는 로그인 구현됨(ready)으로 뜬다(261124)."""
+    _, L = env
+    L._setup_save(form(sites={"kosha": {"bizno": "123 45 67890"}}))
+    sc = accounts.load()["accounts"][0]["sites"]["kosha"]
+    assert sc["bizno"] == "123-45-67890" and "port" in sc
+    assert L._setup_view()["accounts"][0]["sites"]["kosha"]["bizno"] == "123-45-67890"
+    k = accounts.key("a1:kosha")
+    assert k["ready"] and k["org"] == "안전보건공단"
+    with pytest.raises(ValueError):
+        accounts.upsert(form(id="a1", sites={"kosha": {"bizno": "12345"}}), [CERTS[0]["cn"]])
+
+
+def test_kosha_login_registered():
+    import gov_login
+    assert gov_login.SITES["kosha"] is gov_login.login_kosha
+    assert [s[0] for s in accounts.SITES][-1] == "kosha"  # 끝에 붙여 기존 사이트의 기본 포트 순번을 밀지 않는다
+
+
+def test_kosha_logged_in_ignores_logout_inside_popup():
+    """세션 만료 안내창(.popup .alert) 안의 「로그아웃」 버튼은 로그인 표지가 아니다(261124 --dry 오판)."""
+    import gov_login
+    js = gov_login.KOSHA_LOGGED_JS
+    assert "closest('.popup, .alert')" in js and "getBoundingClientRect" in js

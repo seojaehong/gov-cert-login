@@ -683,8 +683,91 @@ def login_labor(page, site_cfg, cert, pw):
     return False
 
 
+KOSHA_HOME = "https://portal.kosha.or.kr/"
+KSIGN_PW = "#kc_content_default input.kc-pw-box"  # KSign KCase 인증서 창 암호칸(TouchEn nxKey E2E 대상)
+
+
+KOSHA_LOGGED_JS = """() => [...document.querySelectorAll('a, button')].some(e => {
+  if (!/^\\s*로그아웃\\s*$/.test(e.innerText || '') || e.closest('.popup, .alert')) return false;
+  const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; })"""
+
+
+def _kosha_logged_in(page):
+    """산업안전포털 — 보이는 「로그아웃」 버튼. 로그아웃 상태에도 세션 만료 안내창(.popup .alert) 안에 「로그아웃」 버튼이 있고,
+    첫 렌더 순간에는 그 창이 잠깐 보이는 것으로 잡혀 「로그인 성공」 오판이 났다(261124 --dry) → 안내창 안 버튼은 빼고, 1초 뒤 한 번 더 본다."""
+    try:
+        if not page.evaluate(KOSHA_LOGGED_JS):
+            return False
+        page.wait_for_timeout(1000)
+        return bool(page.evaluate(KOSHA_LOGGED_JS))
+    except Exception:  # noqa: BLE001 — 이동 중이면 다음 회차에 다시 본다
+        return False
+
+
+def _kosha_open_cert_popup(page, bizno):
+    """산업안전포털 사업자 로그인 — 「로그인」 → 「사업자」 탭 → (Any-ID 사업장 사용자 등록 안내 닫기)
+    → 「안전보건공단 로그인」 구역의 공동인증서 → 사업자등록번호(vid1) → 「인증」 → KSign 인증서 창(새 창). 그 창을 돌려준다.
+    Any-ID(정부 통합인증) 쪽 공동인증서는 사업장 사용자 등록이 먼저라 쓰지 않는다(261124 탐침)."""
+    page.locator("button:visible").filter(has_text=re.compile(r"^\s*로그인\s*$")).first.click()
+    page.wait_for_timeout(2000)
+    page.click("#tab_login_02 button")
+    page.wait_for_timeout(1500)
+    for b in page.locator("button:visible").filter(has_text=re.compile(r"^\s*닫기\s*$")).all():  # 사업장 사용자 등록 안내창
+        try:
+            b.click(timeout=2000)
+        except Exception:  # noqa: BLE001
+            pass
+    page.wait_for_timeout(800)
+    page.locator("li.id a.login-link:visible").filter(has_text="공동인증서").first.click()
+    page.wait_for_selector("input[name=vid1]", state="visible", timeout=15000)
+    page.fill("input[name=vid1]", bizno)
+    with page.context.expect_page(timeout=30000) as pop_info:
+        page.locator("button:visible").filter(has_text=re.compile(r"^\s*인증\s*$")).first.click()
+    pop = pop_info.value
+    pop.wait_for_selector(KSIGN_PW, state="visible", timeout=45000)
+    pop.wait_for_timeout(2000)  # 브라우저 저장소 목록을 읽어 온다
+    return pop
+
+
+def login_kosha(page, site_cfg, cert, pw):
+    """안전보건공단 산업안전포털(portal.kosha.or.kr) 사업자 — 「안전보건공단 로그인」 공동인증서 경로.
+    인증서 창 = KSign KCase 웹(새 창, 브라우저 저장소 목록·#fileInput 으로 pfx/der+key 가져오기). 암호칸은 TouchEn nxKey E2E 대상이다.
+    로그인 판정 = 안내창 밖에 보이는 「로그아웃」 버튼(_kosha_logged_in)."""
+    page.goto(KOSHA_HOME, wait_until="domcontentloaded", timeout=60000)
+    page.wait_for_timeout(3000)
+    if _kosha_logged_in(page):
+        return True
+    b = "".join(ch for ch in (site_cfg.get("bizno") or "") if ch.isdigit())
+    if len(b) != 10:
+        raise ValueError("산업안전포털 사업자 로그인에는 사업자등록번호 10자리가 필요합니다.")
+    pop = _kosha_open_cert_popup(page, b)
+    pop.on("dialog", lambda d: (print("인증서 창 알림:", d.message[:120]), d.accept()))
+    rows = pop.locator("#kc_cert_list tr").filter(has_text=cert["cn"][:10])
+    if not rows.count():  # 브라우저 저장소에 없으면 인증서 파일을 넣는다 → 「브라우저 저장소에 인증서가 등록되었습니다」
+        pop.set_input_files("#fileInput", files_of(cert))
+        pop.wait_for_timeout(3000)
+        rows = pop.locator("#kc_cert_list tr").filter(has_text=cert["cn"][:10])
+    if not rows.count():
+        raise RuntimeError("KSign 인증서 창 목록에 이 인증서가 없습니다.")
+    rows.first.click()
+    if pw is None:
+        print("[dry] KSign 인증서 창·목록 선택까지 확인")
+        return False
+    if _keypad_only(pop, KSIGN_PW):
+        _wait_user_keypad(pop)
+    else:
+        _type_pw(pop, KSIGN_PW, pw)
+        pop.click("#kc_content_default button.kc-btn-blue")
+    for _ in range(30):
+        page.wait_for_timeout(2000)
+        if _kosha_logged_in(page):
+            print("로그인 후 주소:", page.url[:80])
+            return True
+    return False
+
+
 SITES ={"comwel": login_comwel, "nps": login_nps, "nhis": login_nhis, "hsfms": login_hsfms, "work24": login_work24,
-        "labor": login_labor}
+        "labor": login_labor, "kosha": login_kosha}
 
 
 def _port_alive(port):
@@ -767,7 +850,7 @@ def login(target, cert_idx, keep, dry=False, restart=False):
             return p.chromium.launch_persistent_context(profile, channel="chrome", headless=False,
                                                         viewport={"width": 1400, "height": 900},
                                                         args=["--remote-debugging-port=" + port]  # 로그인 뒤 다른 스크립트가 connect_over_cdp 로 붙는다
-                                                        + (["--disable-features=LocalNetworkAccessChecks"] if site in ("nhis", "hsfms", "labor") else []))  # 보안모듈 데몬(127.0.0.1) 접속 허용 — 건보 261103, 노동포털 MagicLine4NX 261122
+                                                        + (["--disable-features=LocalNetworkAccessChecks"] if site in ("nhis", "hsfms", "labor", "kosha") else []))  # 보안모듈 데몬(127.0.0.1) 접속 허용 — 건보 261103, 노동포털 MagicLine4NX 261122
         try:
             ctx = _open()
         except Exception as e:  # noqa: BLE001 — 남은 크롬이 프로필을 쥐고 있던 경우 한 번만 다시 연다

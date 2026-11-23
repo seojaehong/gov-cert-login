@@ -188,7 +188,7 @@ def _setup_view():
                 v = {"mode": "personal" if sc.get("login_tab") == "personal" else sc.get("kind", "사무대행"),
                      "bizno": sc.get("bizno", ""), "account_hint": sc.get("account_hint", ""),
                      "rrn_saved": secret_store.has("rrn:" + sec)}
-            elif sid in ("hsfms", "labor"):
+            elif sid in ("hsfms", "labor", "kosha"):
                 v = {"bizno": sc.get("bizno", "")}
             elif sid == "work24":
                 v = {"kind": sc.get("kind", "사무대행기관"), "isoa_no": sc.get("isoa_no", ""), "bplc_no": sc.get("bplc_no", "")}
