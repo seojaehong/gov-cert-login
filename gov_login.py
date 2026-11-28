@@ -386,6 +386,10 @@ def _fill_ksbiz(page, fr, cert, pw):
 def login_nps(page, site_cfg, cert, pw):
     page.goto("https://edi.nps.or.kr/", wait_until="domcontentloaded", timeout=60000)
     time.sleep(8)
+    # 프로필에 로그인이 살아 있으면 로그인 칸 대신 메인(「로그아웃」·「업무사업장 선택」 창)이 뜬다 — 실패로 오판하던 자리(261128)
+    if not page.locator("#txtBplcMngNo").is_visible() and "로그아웃" in page.inner_text("body")[:5000]:
+        print("이미 로그인돼 있습니다(프로필 세션)")
+        return True
     page.fill("#txtBplcMngNo", site_cfg["mng_no"])
     page.locator("button.managment-number-button").first.click()
     time.sleep(3)
