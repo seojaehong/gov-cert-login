@@ -22,6 +22,12 @@
 !tests/test_stale_profile.py
 !tests/test_logkeep_version.py
 !tests/test_anysign.py
+!tests/test_native_host.py
+!native_host.py
+!extension/
+!extension/manifest.json
+!extension/popup.html
+!extension/popup.js
 !tools/
 !tools/anysign_guard.ps1
 !tools/install_anysign_guard.ps1

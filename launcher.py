@@ -27,7 +27,7 @@ HERE = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))  # l
 PY = os.path.join(os.path.dirname(sys.executable), "python.exe")  # pythonw 로 떠도 자식은 python.exe
 NOWIN = subprocess.CREATE_NO_WINDOW
 OUT = accounts.LOGS
-SCRIPTS = ("gov_login", "login_state")  # 설치본에서는 exe 가 「--run 이름」으로 이것들을 대신 실행한다
+SCRIPTS = ("gov_login", "login_state", "native_host")  # 설치본에서는 exe 가 「--run 이름」으로 이것들을 대신 실행한다
 
 
 def _cmd(script, *args):
