@@ -113,6 +113,19 @@ def test_install_manifest_and_registry(tmp_path):
     assert written == {nh.REG_KEY: p}
 
 
+def test_host_cmd_with_hangul_exe_path(tmp_path, monkeypatch):
+    # 윈도우 사용자 이름이 한글이면 설치본 exe 경로에 한글이 들어간다 — ascii 로 쓰다 죽으면 설치 때 등록이 조용히 빠진다
+    exe = r"C:\Users\홍길동\AppData\Local\Programs\GovLogin\GovLogin.exe"
+    monkeypatch.setattr(nh, "FROZEN", True)
+    monkeypatch.setattr(nh.sys, "executable", exe)
+    path = nh._write_host_cmd(str(tmp_path))
+    raw = open(path, "rb").read()
+    assert raw.startswith(b"@echo off\r\n")
+    # cmd.exe 는 배치 파일을 콘솔(OEM) 코드 페이지로 읽는다 — 그 코드 페이지로 풀어 경로가 그대로 보여야 한다
+    assert exe in raw.decode("oem") or "~" in raw.decode("ascii", "replace")
+    assert raw.rstrip().endswith(b"--run native_host %*")
+
+
 def test_install_rejects_wildcard_origin(tmp_path):
     import pytest
     with pytest.raises(ValueError):

@@ -161,9 +161,26 @@ def _write_host_cmd(folder):
     else:
         py = os.path.join(os.path.dirname(sys.executable), "python.exe")
         line = f'@"{py}" "{os.path.join(HERE, "native_host.py")}" %*\r\n'
-    with open(path, "w", encoding="ascii", errors="strict", newline="") as f:
-        f.write("@echo off\r\n" + line)
+    # cmd.exe 는 배치 파일을 콘솔(OEM) 코드 페이지로 읽는다 — 한글 사용자 이름(경로)도 그 코드 페이지로 쓴다.
+    # 그 코드 페이지에 없는 글자면 짧은 경로(8.3)로 바꿔 쓴다. 둘 다 안 되면 등록을 멈추고 알린다(조용히 빠지지 않게).
+    text = "@echo off\r\n" + line
+    try:
+        data = text.encode("oem" if sys.platform == "win32" else "utf-8")
+    except UnicodeEncodeError:
+        data = _short_paths(text).encode("ascii")
+    with open(path, "wb") as f:
+        f.write(data)
     return path
+
+
+def _short_paths(text):
+    import ctypes
+    out = text
+    for p in {sys.executable, os.path.join(HERE, "native_host.py")}:
+        buf = ctypes.create_unicode_buffer(32768)
+        if ctypes.windll.kernel32.GetShortPathNameW(p, buf, len(buf)):
+            out = out.replace(p, buf.value)
+    return out
 
 
 def install(folder, origins, host_cmd=None, reg_set=_reg_set):
