@@ -647,9 +647,7 @@ def login_labor(page, site_cfg, cert, pw):
     page.wait_for_timeout(3000)
     if _work24_logged_in(page):  # 보이는 「로그아웃」 버튼 — 같은 판정
         return True
-    if cert.get("files"):
-        raise ValueError("노동포털은 아직 PC(NPKI) 인증서만 됩니다 — pfx 가져오기는 미구현.")
-    b = "".join(ch for ch in (site_cfg.get("bizno") or "") if ch.isdigit())
+    b ="".join(ch for ch in (site_cfg.get("bizno") or "") if ch.isdigit())
     if len(b) != 10:
         raise ValueError("노동포털 기업 로그인에는 사업자등록번호 10자리가 필요합니다.")
     page.click("#tab02")
@@ -666,9 +664,29 @@ def login_labor(page, site_cfg, cert, pw):
     else:
         raise RuntimeError("MagicLine 인증서 창이 뜨지 않았습니다(MagicLine4NX 설치·실행 확인).")
     page.wait_for_timeout(2500)  # 하드디스크 목록을 읽어 온다
-    row = fr.locator("#dataTable tbody tr").filter(has_text=cert["cn"][:10])
+    if cert.get("files"):  # pfx — 「브라우저」 저장소 → 「브라우저로 공동인증서 가져오기」 → #filefile2 + 가져오기 암호(261128 실측)
+        fr.click("#stg_web")
+        page.wait_for_timeout(2000)
+        if not fr.locator("#dataTable tbody tr").filter(has_text=cert["cn"][:10]).count():
+            if pw is None:
+                print("[dry] 브라우저 저장소 열기까지 확인(pfx 가져오기는 암호가 필요해 건너뜀)")
+                return False
+            fr.click("#in_browser")
+            page.wait_for_timeout(1500)
+            fr.set_input_files("#filefile2", files_of(cert))
+            page.wait_for_timeout(1500)
+            fr.locator("#add_browser_password").fill(pw)
+            fr.locator("#browser_save_yn").set_checked(False)  # 브라우저 저장소에 남기지 않는다 — 매번 파일에서 가져온다
+            fr.click("#btn_common_confirm")  # 가져오기 확인이 곧 로그인이다 — 인증서 창 프레임이 사라지고 메인으로 간다(261128 실측)
+            for _ in range(20):
+                page.wait_for_timeout(1500)
+                if _work24_logged_in(page):
+                    print("로그인 후 주소:", page.url[:80])
+                    return True
+            return False
+    row =fr.locator("#dataTable tbody tr").filter(has_text=cert["cn"][:10])
     if not row.count():
-        raise RuntimeError("인증서 창의 하드디스크 목록에 이 인증서가 없습니다.")
+        raise RuntimeError("인증서 창 목록에 이 인증서가 없습니다.")
     row.first.click()
     if pw is None:
         print("[dry] 인증서 창·목록 선택까지 확인")
@@ -757,7 +775,7 @@ def login_kosha(page, site_cfg, cert, pw):
         _wait_user_keypad(pop)
     else:
         _type_pw(pop, KSIGN_PW, pw)
-        pop.click("#kc_content_default button.kc-btn-blue")
+        pop.click("#kc_dialog_default button.kc-btn-blue")  # 확인 버튼은 암호칸(#kc_content_default) 밖 대화상자 단추줄에 있다(261124 실측)
     for _ in range(30):
         page.wait_for_timeout(2000)
         if _kosha_logged_in(page):
@@ -848,6 +866,7 @@ def login(target, cert_idx, keep, dry=False, restart=False):
     with sync_playwright() as p:
         def _open():
             return p.chromium.launch_persistent_context(profile, channel="chrome", headless=False,
+                                                        ignore_default_args=["--disable-extensions"],  # 프로필에 올린 확장(4대보험 처리결과 등)이 돌게 — Playwright 기본값은 확장 끔(261128)
                                                         viewport={"width": 1400, "height": 900},
                                                         args=["--remote-debugging-port=" + port]  # 로그인 뒤 다른 스크립트가 connect_over_cdp 로 붙는다
                                                         + (["--disable-features=LocalNetworkAccessChecks"] if site in ("nhis", "hsfms", "labor", "kosha") else []))  # 보안모듈 데몬(127.0.0.1) 접속 허용 — 건보 261103, 노동포털 MagicLine4NX 261122
