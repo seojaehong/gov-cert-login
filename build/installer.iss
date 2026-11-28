@@ -9,6 +9,9 @@
   #error "버전이 없습니다 — ISCC /DAppVer=<version.py 의 버전> build\installer.iss 로 빌드하세요"
 #endif
 
+; 크롬 확장 「공단 로그인 연결」의 id — extension/manifest.json 의 key 에서 나온다(key 를 바꾸면 함께 바꾼다)
+#define ExtId "eadoahnbflmkdbflhoekahincbkbfebp"
+
 [Setup]
 AppId={{A86A9AE9-E83E-42CD-87B7-186C6DAE0751}
 AppName=공단 로그인
@@ -44,9 +47,18 @@ Name: "{group}\공단 로그인 제거"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\공단 로그인"; Filename: "{app}\GovLogin.exe"; Tasks: desktopicon
 
 [Run]
+; 크롬 확장이 이 프로그램을 부를 수 있게 등록한다(HKCU 네이티브 메시징 호스트). 업데이트 때도 다시 돌아 경로를 맞춘다
+Filename: "{app}\GovLogin.exe"; Parameters: "--run native_host install {#ExtId}"; StatusMsg: "크롬 확장 연결을 등록하는 중…"; Flags: runhidden waituntilterminated
 Filename: "{app}\GovLogin.exe"; Description: "공단 로그인 실행"; Flags: nowait postinstall skipifsilent
 ; 런처 안 「새 버전」(조용히 설치 /VERYSILENT) 이 끝나면 다시 켠다
 Filename: "{app}\GovLogin.exe"; Flags: nowait; Check: WizardSilent
+
+[UninstallRun]
+Filename: "{app}\GovLogin.exe"; Parameters: "--run native_host uninstall"; RunOnceId: "NativeHostUninstall"; Flags: runhidden waituntilterminated
+
+[UninstallDelete]
+; 연결 등록 파일(run_host.cmd·manifest)만 지운다. 계정 설정·저장 암호는 남긴다
+Type: filesandordirs; Name: "{localappdata}\gov-cert-login\native"
 
 [Code]
 // 크롬이 없으면 안내만 한다(설치는 계속). 로그인 창은 PC에 깔린 크롬을 쓴다.
