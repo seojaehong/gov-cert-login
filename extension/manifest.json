@@ -5,5 +5,10 @@
   "description": "이 PC의 「공단 로그인」 프로그램을 불러 토탈·국민연금·건강보험 창을 엽니다. 암호는 확장에 오지 않습니다.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArj9bbrI9G5h3vFzzRT28J5LWBK3rcYcgw7ME4Xt323lfmSAMgmdXt9Z3EcVlR7dBdp6+83VEu//3i/H29UBuxyuePXRxL9/hz0Dw1bfKyl5NX3CnnklpePioka+zEaOpjhpcF1jtY2rAU6FF9J9dOjdcfYY+5R03+0fuA50/a08AV0wWTuY8oLBpEAGcBIKPURd5W9gKYwh4Rg5mnq+T5cumg3USwytKnWV1smL+Smo0w2ehvGJU7tdb5BJL+eMy7LNOKDKTAE7rDcTfD3M1u4PG7G0HS43pmO+mkzD/NDINO4KB2k7AtqTXjqWzCfB/Qb/PN/ODIOFl4ggZ0nuC1QIDAQAB",
   "permissions": ["nativeMessaging"],
-  "action": { "default_popup": "popup.html", "default_title": "공단 로그인" }
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "공단 로그인",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png" }
+  }
 }

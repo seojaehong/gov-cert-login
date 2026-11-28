@@ -28,6 +28,8 @@
 !extension/manifest.json
 !extension/popup.html
 !extension/popup.js
+!extension/icons/
+!extension/icons/*.png
 !tools/
 !tools/anysign_guard.ps1
 !tools/install_anysign_guard.ps1
